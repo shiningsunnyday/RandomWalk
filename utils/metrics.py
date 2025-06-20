@@ -9,6 +9,14 @@ import argparse
 import json
 from pathlib import Path
 import random
+import multiprocessing as mp
+from itertools import product
+from tqdm import tqdm
+from moses.metrics import FCDMetric, ScafMetric, compute_intermediate_statistics, get_all_metrics
+from moses.utils import mapper, get_mol
+from eden.graph import vectorize
+from sklearn.metrics.pairwise import pairwise_kernels
+import networkx as nx
 
 
 def lock(f):
@@ -40,23 +48,48 @@ class InternalDiversity():
         return diversity
     
 
+def kernel_compute(X, Y=None, n_jobs=None):
+    X = vectorize(X, complexity=4, discrete=True)
+    if Y is not None:
+        Y = vectorize(Y, complexity=4, discrete=True)
+    return pairwise_kernels(X, Y, metric='linear', n_jobs=n_jobs)
 
-def chamfer_dist(old_smis, new_smis):
+
+def compute_mmd(samples1, samples2, n_jobs=None):
+    """
+    MMD between two list of samples
+    """
+    # print('Compute_mmd', inspect.ArgSpec(compute_mmd))
+
+    X = kernel_compute(samples1, n_jobs=n_jobs)
+    Y = kernel_compute(samples2, n_jobs=n_jobs)
+    Z = kernel_compute(samples1, Y=samples2, n_jobs=n_jobs)
+
+    return np.average(X) + np.average(Y) - 2 * np.average(Z)
+
+
+def smiles_to_nx(smiles):
+    gs = []
+    for smi in smiles:
+        g = nx.Graph()
+        mol = Chem.MolFromSmiles(smi)
+        for a in mol.GetAtoms():
+            g.add_node(a.GetIdx(), label=a.GetSymbol())
+        for b in mol.GetBonds():
+            g.add_edge(b.GetBeginAtomIdx(), b.GetEndAtomIdx(), label=b.GetBondType())
+        gs.append(g)
+    return gs
+
+
+def chamfer_dist(old_smis, new_smis, num_procs=50):
+    old_mols = [Chem.MolFromSmiles(smi) for smi in old_smis]
+    new_mols = [Chem.MolFromSmiles(smi) for smi in new_smis]
+    old_mols = list(filter(lambda x: x, old_mols))
+    new_mols = list(filter(lambda x: x, new_mols))
     div = InternalDiversity()
-    dists = []
-    for smi1 in old_smis:        
-        dist = []
-        for smi2 in new_smis:
-            mol1 = Chem.MolFromSmiles(smi1)
-            mol2 = Chem.MolFromSmiles(smi2)
-            if mol2 is None:
-                continue
-            print(f"smi1 {smi1} smi2 {smi2}")
-            d = div.distance(mol1, mol2)
-            dist.append(d)
-
-        dists.append(dist)
-    dists = np.array(dists)
+    with mp.Pool(num_procs) as p:
+        res = p.starmap(div.distance, tqdm(product(old_mols, new_mols), desc="chamfer", total=len(old_mols)*len(new_mols)))
+    dists = np.array(res).reshape((len(old_mols), len(new_mols)))
     d1 = dists[dists.argmin(axis=0), list(range(dists.shape[1]))].mean()
     d2 = dists[list(range(dists.shape[0])), dists.argmin(axis=1)].mean()
     return (d1+d2)/2
@@ -74,11 +107,13 @@ def retro_sender(generated_samples, folder, retro_suffix=''):
             if editable:
                 with open(sender_filename, 'w') as fw:
                     for sample in generated_samples:
-                        fw.write('{}\n'.format(sample))
+                        fw.write('{}\n'.format(sample))                
+                fcntl.flock(fr, fcntl.LOCK_UN)
                 break
-        fcntl.flock(fr, fcntl.LOCK_UN)
     num_samples = len(generated_samples)
     print("Waiting for retro_star evaluation...")
+    count = 0
+    latest = time.time()
     while(True):
         with open(receiver_filename, 'r') as fr:
             editable = lock(fr)
@@ -90,9 +125,18 @@ def retro_sender(generated_samples, folder, retro_suffix=''):
                         splitted_line = line.strip().split()
                         syn_status.append((idx, splitted_line[2]))
                     break
+                else:
+                    if len(lines) > count:
+                        count = len(lines)
+                        latest = time.time()
+                    elif time.time()-latest > 200:
+                        for idx, line in enumerate(lines):
+                            splitted_line = line.strip().split()
+                            syn_status.append((idx, splitted_line[2]))
+                        break                        
             fcntl.flock(fr, fcntl.LOCK_UN)
         time.sleep(1)
-    assert len(generated_samples) == len(syn_status)
+    generated_samples = [generated_samples[int(idx)] for idx, _ in syn_status]
     sender_filename_suffix = os.path.join(folder, f'generated_samples{retro_suffix}.txt')
     receiver_filename_suffix = os.path.join(folder, f'output_syn{retro_suffix}.txt')
     shutil.copyfile(sender_filename, sender_filename_suffix) # save res
@@ -164,8 +208,6 @@ def check_hopv(smis):
     members = 0
     for smi in smis:
         mol = Chem.MolFromSmiles(smi)
-        if mol is None:
-            continue
         members += bool(mol.GetSubstructMatches(thio))
     return members/len(smis)
 
@@ -176,8 +218,6 @@ def check_ptc(smis):
     members = 0
     for smi in smis:
         mol = Chem.MolFromSmiles(smi)
-        if mol is None:
-            continue
         members += max(*[bool(mol.GetSubstructMatches(halide)) for halide in halides])
     return members/len(smis)
 
@@ -206,29 +246,10 @@ def check_acrylate(smis):
 
 def check_chain_extender(smis):
     # Define SMARTS patterns for various chain extenders
-    chain_extenders_smarts = [
-        'OCCO',           # Ethylene glycol (EG)
-        'OCCCCO',         # 1,4-Butanediol (BD)
-        'OCCNC(=O)NCCCCCCNC(=O)NCCO',  # AE-H-AE
-        'OCCN1C(=O)NC(C1(=O))CCCCNC(=O)NCCO',  # AE-L-AE
-        'Oc1ccc(cc1)CCC(=O)OCCOC(=O)CCc1ccc(cc1)O',  # D-E-D
-        'OC(=O)C(N)CCCCN',  # Lysine (LYS)
-        'OC(=O)C(N)CCCN',  # L-Ornithine (L-Orn)
-        'N1CCNCC1',  # Piperazine (Pip)
-        'Nc1ccc(cc1)SSc2ccc(cc2)N',  # AFD
-        'Nc1ccc(cc1)Cc2ccc(cc2)N'  # MDA
-    ]
     members = 0
     for smi in smis:
         mol = Chem.MolFromSmiles(smi)
-        # Check if any of the chain extender motifs are present
-        match = False
-        for smarts in chain_extenders_smarts:
-            pattern = Chem.MolFromSmarts(smarts)
-            if mol.HasSubstructMatch(pattern):
-                match = True
-                break
-        members += match
+        members += mol.HasSubstructMatch(Chem.MolFromSmiles("CO")) or mol.HasSubstructMatch(Chem.MolFromSmiles("CN"))
     return members/len(smis)
 
 
@@ -245,28 +266,72 @@ def get_membership(args, new_smiles):
     elif 'chain_extender' in args.data_file.lower():
         func = check_chain_extender
     else:
-        breakpoint()
+        func = lambda smi: True
     return func(new_smiles)
+
+
+def mol_from_smiles(smi):
+    if smi:
+        return Chem.MolFromSmiles(smi)
+    else:
+        return None
 
 
 
 def compute_metrics(args, mols, old_smiles, new_smiles, retro_suffix='_test'):
-    metrics = {}    
-    metrics['membership'] = get_membership(args, new_smiles)
-    mols = [Chem.MolFromSmiles(smi) for smi in new_smiles]
-    metrics['valid'] = sum([mol is not None for mol in mols])/len(mols)     
-    if old_smiles is not None:
-        metrics['novelty'] = get_novelty(old_smiles, new_smiles)
-        # metrics['chamfer'] = chamfer_dist(old_smiles, new_smiles)       
-    metrics['unique'] = get_uniqueness(new_smiles)
-    div = InternalDiversity()
+    log_folder = args.log_folder if hasattr(args, 'log_folder') else args.logs_folder    
+    metrics = {}       
+    mols = [mol_from_smiles(smi) for smi in new_smiles]    
+    metrics['valid'] = sum([mol is not None for mol in mols])/len(mols)
     mols = [mol for mol, smi in zip(mols, new_smiles) if mol is not None]
-    new_smiles = [smi for smi in new_smiles if Chem.MolFromSmiles(smi) is not None]
-    random.shuffle(new_smiles)
+    new_smiles = [smi for smi in new_smiles if mol_from_smiles(smi) is not None]
+    # following assumes new_smiles 100% validity
+    metrics['membership'] = get_membership(args, new_smiles)
+    if args.retro:
+        if len(new_smiles) > 1000:
+            random.shuffle(new_smiles)
+            retro_smiles = new_smiles[:1000]
+        else:
+            retro_smiles = new_smiles    
+    batch_size = 500
+    n_jobs = 50
+    device = 'cuda:0'
+    print("compute ptest")
+    ptest = compute_intermediate_statistics(old_smiles, n_jobs=n_jobs,
+                                                device=device,
+                                                batch_size=batch_size,
+                                                pool=mp.Pool(50))
+    print("finish ptest")
+    kwargs = {'n_jobs': n_jobs, 'device': device, 'batch_size': batch_size}
+    if args.moses:        
+        metrics_all = get_all_metrics(new_smiles,n_jobs=n_jobs,test=old_smiles,train=old_smiles) 
+        print("finish get_all_metrics")       
+        metrics.update(metrics_all)
+    else:
+        fcd = FCDMetric(**kwargs)             
+        metrics['FCD'] = fcd(gen=new_smiles, pref=ptest['FCD'])
+        print("fcd metric done")  
+        mols_for_scaf = list(filter(None, mapper(1)(get_mol, new_smiles)))
+        scaf = ScafMetric(**kwargs) 
+        metrics['Scaf'] = scaf(gen=mols_for_scaf, pref=ptest['Scaf'])    
+        print("scaf metric done")  
+
+    old_nx = smiles_to_nx(old_smiles)
+    new_nx = smiles_to_nx(new_smiles)
+    print("smiles to nx done") 
+    metrics['NSPDK'] = compute_mmd(old_nx, new_nx, n_jobs=n_jobs)
+    print("nspdk done") 
+
+    if args.retro:
+        metrics['RS'] = retro_sender(retro_smiles, log_folder, retro_suffix=retro_suffix)
+    if old_smiles is not None:        
+        metrics['novelty'] = get_novelty(old_smiles, new_smiles)
+        metrics['chamfer'] = chamfer_dist(old_smiles, new_smiles) # not defined for invalid
+    metrics['unique'] = get_uniqueness(new_smiles)
+    div = InternalDiversity()    
+    # random.shuffle(new_smiles)
     print(f"{len(mols)} valid")
-    metrics['diversity'] = div.get_diversity(mols)
-    log_folder = args.log_folder if hasattr(args, 'log_folder') else args.logs_folder
-    metrics['RS'] = retro_sender(new_smiles[:1000], log_folder, retro_suffix=retro_suffix)
+    metrics['diversity'] = div.get_diversity(mols)    
     return metrics 
 
 
@@ -275,6 +340,8 @@ if __name__ == "__main__":
     parser.add_argument("--log_folder")
     parser.add_argument("--old_smiles_file")
     parser.add_argument("--new_smiles_file")
+    parser.add_argument("--retro", action='store_true')
+    parser.add_argument("--moses", action='store_true')
     args = parser.parse_args()
     setattr(args, 'data_file', args.old_smiles_file)
     suffix = Path(args.new_smiles_file).stem
