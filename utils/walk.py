@@ -322,7 +322,7 @@ def walk_enumerate_mols(walk, graph, mols, folder=None, loop_back=False, return_
     for i, at in enumerate(enum_mols[-1].GetAtoms()):
         at.SetProp('a', f"{a}-{i}") # this atom remembers it came from group a and was index i    
     idxes = [extract_idxes(enum_mols[-1])]
-    chosen_edges = [[None for _ in walk]] # later use with conn
+    chosen_edges = [[None for _ in walk]] # later use with conn    
     while bfs:
         a = bfs[0]
         bfs.pop(0)                        
@@ -342,24 +342,10 @@ def walk_enumerate_mols(walk, graph, mols, folder=None, loop_back=False, return_
                     raise NotImplementedError
                 bad = True
                 for e in poss_edges:
-                    try:
-                        walk_along_edge(mols, 
-                                        graph, 
-                                        conn_index, 
-                                        idx_val, 
-                                        idx_mol, 
-                                        idxes, 
-                                        mol, 
-                                        chosen_edge, 
-                                        new_mols, 
-                                        new_chosen_edges, 
-                                        new_idxes, 
-                                        a, 
-                                        b, 
-                                        e, 
-                                        folder)
+                    try:                                               
+                        walk_along_edge(mols, graph, conn_index, idx_val, idx_mol, idxes, mol, chosen_edge, new_mols, new_chosen_edges, new_idxes, a, b, e, folder)
                         bad = False
-                    except ValueError as e:
+                    except ValueError as e:                        
                         continue
                 if bad: # cannot walk
                     raise ValueError("cannot sanitize mol")

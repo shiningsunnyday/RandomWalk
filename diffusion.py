@@ -321,7 +321,10 @@ class DiffusionGraph:
 
     def step(self):
         for p in self.processes:
-            p.step()
+            try:
+                p.step()
+            except KeyError:
+                continue
         self.t += 1
     
     def get_state(self, return_all=False):
@@ -1374,13 +1377,12 @@ def sample_walks(args,
             num_tried += 1
             name_traj = process_good_traj(traj, all_nodes)
             assert len(traj) == len(name_traj)
-            try: # test for validity
+            try: # test for validity                
                 root, edge_conn = verify_walk(r_lookup, 
                                               G, 
                                               name_traj, 
                                               **kwargs)
             except Exception as e:                
-                breakpoint()
                 if isinstance(e, KeyError): # invalid walk
                     # print(e)
                     walk_invalid += 1
