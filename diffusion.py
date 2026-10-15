@@ -1565,6 +1565,21 @@ def attach_smiles(args, all_dags):
 
 
 
+def drop_loop_back(edge_conn):
+    """Drop the final loop-back edge into the root, if the last edge is one: it touches the root and the
+    walk stays connected without it. 2-group rings (loop edge already deduplicated away) keep all edges."""
+    if not edge_conn:
+        return edge_conn
+    a, b = edge_conn[-1][0], edge_conn[-1][1]
+    if a.id and b.id:
+        return edge_conn
+    rest = edge_conn[:-1]
+    g = nx.Graph()
+    g.add_nodes_from(n.id for e in edge_conn for n in e[:2])
+    g.add_edges_from((x.id, y.id) for x, y, *_ in rest)
+    return rest if rest and nx.is_connected(g) else edge_conn
+
+
 def prune_walk(args, graph, walks):
     pruned_walks = [None for _ in walks]
     for i in range(len(walks)):
@@ -1580,7 +1595,7 @@ def prune_walk(args, graph, walks):
             except:
                 breakpoint()
             pruned.append((a, b, e, w))
-        if 'group-contrib' in args.walks_file and not pruned:
+        if 'group-contrib' in os.environ['dataset'] and not pruned:
             breakpoint()
         if len(walks[i]) == 3:
             pruned_walks[i] = (pruned, prop)        
@@ -1813,12 +1828,11 @@ def main(args):
                                               diffusion_args,
                                               return_metrics=True,
                                               loop_back='group-contrib' in os.environ['dataset'])
-        breakpoint()
         if args.compute_metrics:            
             new_smiles = [dag.smiles for dag in new_dags]
             metrics = compute_metrics(args, mols, old_smiles, new_smiles, retro_suffix='_test')
             json.dump(metrics, open(os.path.join(args.log_folder, 'metrics.json'), 'w+'))
-        for f in args.compute_metrics_baselines:
+        for f in args.compute_metrics_baselines or []:
             new_smiles = [l.rstrip('\n') for l in open(f).readlines()]
             suffix = f"_{Path(f).stem}"
             metrics = compute_metrics(args, mols, old_smiles, new_smiles, retro_suffix=suffix)
@@ -1858,16 +1872,14 @@ def main(args):
         #     all_walks['old'].append((conn, W_adj))                    
         # all_walks['old'] = prune_walk(args, graph, all_walks['old'])
         # all_walks['old'] = [write_conn(x, G) for (i, x) in enumerate(all_walks['old'])]
-        if 'group-contrib' in args.walks_file:
-            for name_traj, root, edge_conn, W_adj in novel: # (name_traj, root, edge_conn, W_adj)
-                assert not (edge_conn[-1][0].id and edge_conn[-1][1].id) # last edge is assumed to have root
-            all_walks['novel'] = [(edge_conn[:-1], W_adj) for x in novel] # all edges except last edge
+        if 'group-contrib' in os.environ['dataset']:
+            all_walks['novel'] = [(drop_loop_back(edge_conn), W_adj) for _, _, edge_conn, W_adj in novel]
         else:
-            for name_traj, root, edge_conn, W_adj in novel:
-                all_walks['novel'] = [(edge_conn, W_adj) for x in novel] # all edges except last edge        
+            all_walks['novel'] = [(edge_conn, W_adj) for _, _, edge_conn, W_adj in novel]
 
         all_walks['novel'] = prune_walk(args, graph, all_walks['novel'])                
-        all_walks['novel'] = [write_conn(x, G) for (i, x) in enumerate(all_walks['novel'])]
+        # edge ids index the predefined motif graph; G drops edges between replicated groups
+        all_walks['novel'] = [write_conn(x, predefined_graph) for (i, x) in enumerate(all_walks['novel'])]
         print("novel", novel)
         json.dump(all_walks, open(os.path.join(args.log_folder, 'all_dags.json'), 'w+'))
         print("saved to", os.path.join(args.log_folder, 'all_dags.json'))
@@ -1909,6 +1921,7 @@ if __name__ == "__main__":
     parser.add_argument('--vis_walk', action='store_true')
     parser.add_argument('--vis_folder')
     args = parser.parse_args()
+    if args.walks_file is None: # README passes the walks via --data_file
+        args.walks_file = args.data_file
     # run_checks()
-    breakpoint()
     main(args)

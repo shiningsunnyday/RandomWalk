@@ -1,10 +1,11 @@
+from types import SimpleNamespace
 import argparse
 import pickle
 import random
 import networkx as nx
 from utils import *
 from diffusion import L_grammar, Predictor, DiffusionGraph, DiffusionProcess, \
-sample_walks, process_good_traj, get_repr, state_to_probs, append_traj, walk_edge_weight, load_dags, featurize_walk, do_predict, W_to_attr, attach_smiles, prune_walk
+sample_walks, process_good_traj, get_repr, state_to_probs, append_traj, walk_edge_weight, load_dags, featurize_walk, do_predict, W_to_attr, attach_smiles, prune_walk, drop_loop_back
 import json
 import torch
 import time
@@ -747,6 +748,27 @@ def train(args, dags, graph, diffusion_args, props, norm_props, mol_feats, feat_
     return model, predictor      
 
 
+def walk_conn_without_loop(grps, root, conn):
+    """All edges of a polymer walk except the loop back into the root, as (a, b, e) with Node-like a, b.
+    dags.pkl's conn misses side chains hanging off the last main-chain node (traverse_dfs stops at the
+    loop back), so when the parsed walk graph is available take the edges from it; DAG nodes are reused
+    so renamed values (e.g. 'S32:1') still match graph.index_lookup."""
+    if not isinstance(grps, nx.Graph):
+        return conn[:-1] # everything except last loop back
+    by_id, stack = {}, [root]
+    while stack:
+        node = stack.pop()
+        if node.id in by_id:
+            continue
+        by_id[node.id] = node
+        stack += [c[0] if isinstance(c, tuple) else c for c in node.children]
+    def node_of(i):
+        if i in by_id:
+            return by_id[i]
+        return SimpleNamespace(id=i, val=grps.nodes[i]['val'])
+    return [(node_of(a), node_of(b), d['e']) for a, b, d in grps.edges(data=True) if b != 0]
+
+
 def preprocess_data(all_dags, args, logs_folder):
     lines = open(args.walks_file).readlines()
     props = []
@@ -1095,8 +1117,8 @@ def main(args):
             # if not W_adj[graph.index_lookup[a.val]][graph.index_lookup[b.val]]:
             #     breakpoint()
         # get rid of cycle
-        if 'group-contrib' in args.walks_file:
-            conn = data[dag.dag_id][-1][:-1] # everything except last loop back
+        if 'group-contrib' in os.environ['dataset']:
+            conn = walk_conn_without_loop(*data[dag.dag_id][:2], data[dag.dag_id][-1])
             W_adj = walk_edge_weight(dag, graph, model, proc)
         else:
             if dag.children:
@@ -1163,13 +1185,10 @@ def main(args):
     #             print(f"{x[0]},{','.join(list(map(str,novel[i][-1])))}")
     #             f.write(f"{x[0]},{','.join(list(map(str,novel[i][-1])))}\n")
 
-    if 'group-contrib' in args.walks_file:
-        for name_traj, root, edge_conn, W_adj, prop in novel: # (name_traj, root, edge_conn, W_adj, prop)
-            assert not (edge_conn[-1][0].id and edge_conn[-1][1].id) # last edge is assumed to have root
-        all_walks['novel'] = [(edge_conn[:-1], W_adj, prop) for x in novel] # all edges except last edge
+    if 'group-contrib' in os.environ['dataset']:
+        all_walks['novel'] = [(drop_loop_back(edge_conn), W_adj, prop) for _, _, edge_conn, W_adj, prop in novel]
     else:
-        for name_traj, root, edge_conn, W_adj, prop in novel:
-            all_walks['novel'] = [(edge_conn, W_adj, prop) for x in novel] # all edges except last edge
+        all_walks['novel'] = [(edge_conn, W_adj, prop) for _, _, edge_conn, W_adj, prop in novel]
 
     # (edge, W_adj, prop) => ([(a,b,e,w)], prop)
     for key in ['old', 'novel']:
@@ -1181,8 +1200,9 @@ def main(args):
     np.save(os.path.join(args.logs_folder, 'orig_preds.npy'), orig_preds)    
 
 
-    all_walks['old'] = [[write_conn(x, G), *list(map(str, prop))] for x, prop in all_walks['old']]
-    all_walks['novel'] = [[write_conn(x, G), *list(map(str, prop))] for x, prop in all_walks['novel']]
+    # edge ids index the predefined motif graph; graph.graph drops edges between replicated groups (e.g. P22->P22)
+    all_walks['old'] = [[write_conn(x, predefined_graph), *list(map(str, prop))] for x, prop in all_walks['old']]
+    all_walks['novel'] = [[write_conn(x, predefined_graph), *list(map(str, prop))] for x, prop in all_walks['novel']]
     print("novel", novel)
     json.dump(all_walks, open(os.path.join(args.logs_folder, 'all_dags.json'), 'w+'))
     print(f"done! {args.logs_folder}")

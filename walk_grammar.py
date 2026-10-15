@@ -172,7 +172,7 @@ def check_walks(walk_folder):
     return bad_set
 
 
-def main(args):
+def build_grammar(args):
     mols = load_mols(args.motifs_folder)    
     red_grps = annotate_extra(mols, args.extra_label_path)
     # sanity checks
@@ -251,4 +251,4 @@ if __name__ == "__main__":
     parser.add_argument('--motifs_folder')
     parser.add_argument('--walks_folder', help='If given, will check that all edges are represented')
     args = parser.parse_args()
-    main(args)
+    build_grammar(args)

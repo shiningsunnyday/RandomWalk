@@ -652,6 +652,7 @@ def traverse_dfs(walk, graph, loop_back=False):
     to_do = [start]
     root_node = Node(None, [], walk.nodes[start]['val'], 0)
     nodes[start] = root_node
+    loop_edges = [] # loop back to the root goes last, so conn[-1] stays the loop-back edge
     while to_do:
         cur = to_do.pop()
         vis[cur] = True
@@ -665,9 +666,9 @@ def traverse_dfs(walk, graph, loop_back=False):
                     e_cyc = find_e(graph, nodes[cur].val, nodes[j].val, e)       
                     nodes[cur].add_child((nodes[j], e))
                     nodes[j].parent = (nodes[cur], e_cyc)
-                    conn.append((nodes[j], nodes[cur], e_cyc))
-                    conn.append((nodes[cur], nodes[j], e))
-                    break
+                    loop_edges.append((nodes[j], nodes[cur], e_cyc))
+                    loop_edges.append((nodes[cur], nodes[j], e))
+                    continue # was `break`, which dropped side chains of the last main-chain node
             to_do.append(j)
             node = Node(nodes[cur], [], walk.nodes[j]['val'], j, side)
             nodes[j] = node    
@@ -677,7 +678,7 @@ def traverse_dfs(walk, graph, loop_back=False):
             nodes[j].parent = (nodes[cur], e_reverse)                        
             conn.append((nodes[cur], nodes[j], e))
             conn.append((nodes[j], nodes[cur], e_reverse))
-    
+    conn += loop_edges
 
     return root_node, conn
           
@@ -804,7 +805,7 @@ def verify_walk(r_lookup, graph, walk, loop_back=False, return_all=False, check_
             # sanity check
             seen_edges = set()
             for a, b, i in edge_conn:
-                if (a.id, b.id) or (b.id, a.id) in seen_edges:
+                if (a.id, b.id) in seen_edges or (b.id, a.id) in seen_edges:
                     continue
                 else:
                     seen_edges.add((a.id, b.id))
@@ -812,10 +813,8 @@ def verify_walk(r_lookup, graph, walk, loop_back=False, return_all=False, check_
                 red_j2 = graph[a.val][b.val][i]['r_grp_2']
                 assert tuple(red_j1) in set(tuple(x) for x in r_lookup[a.val].values())
                 assert tuple(red_j2) in set(tuple(x) for x in r_lookup[b.val].values())
-                if set(red_j1) & used_reds[a.id]:
-                    breakpoint()
-                if set(red_j2) & used_reds[b.id]:
-                    breakpoint()
+                if set(red_j1) & used_reds[a.id] or set(red_j2) & used_reds[b.id]:
+                    raise ValueError(f"{a.val}:{a.id}->{b.val}:{b.id} edge {i} reuses an attachment point")
                 used_reds[a.id] |= set(red_j1)
                 used_reds[b.id] |= set(red_j2)                        
             print("pass!")            

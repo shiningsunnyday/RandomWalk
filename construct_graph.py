@@ -21,7 +21,8 @@ def run_tests(r_lookup, graph):
     for walk, walk_with_e in test_walks:
         root_1, conn_1 = verify_walk(r_lookup, graph, chain_extract(walk, graph))
         root_2, conn_2 = verify_walk(r_lookup, graph, extract_chain(walk_with_e))
-        assert set([(a.val, b.val) for (a, b, _) in conn_1]) == set((a.val, b.val) for (a, b, _) in conn_2)    
+        # same bonds between groups, regardless of direction (exact-id path lists both directions)
+        assert set(frozenset((a.val, b.val)) for (a, b, _) in conn_1) == set(frozenset((a.val, b.val)) for (a, b, _) in conn_2)
 
 
 if __name__ == "__main__":
@@ -64,7 +65,6 @@ if __name__ == "__main__":
             name = l.split()[0]
             l = l[l.find(' ')+1:]
             walk = l.rstrip('\n').split(' ')[0]
-            breakpoint()
             if args.extract_edges: 
                 grps = chain_extract(walk, graph)                
             else: 
@@ -147,7 +147,6 @@ if __name__ == "__main__":
                           
 
     if args.out_path:
-        breakpoint()
         print(f"processed {len(dags)}/{len(lines)} dags")
         pickle.dump(dags, open(args.out_path, 'wb+'))
         # breakpoint()

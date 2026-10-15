@@ -12,6 +12,13 @@ from tqdm import tqdm
 PRIORITY_RELATION = [('O', 'C')]
 
 
+def keep_existing_typing():
+    """Group-contrib only (other datasets keep the original join behaviour): when a black atom of the
+    existing molecule is replaced by the incoming group's red stand-in, keep the existing atom's
+    element / aromaticity / charge / H count instead of the stand-in's (stand-ins are often generic sp3 C)."""
+    return 'group-contrib' in os.environ.get('dataset', '')
+
+
 def name_group(m):
     """
     ANYTHING OTHER THAN GROUP CONTRIB
@@ -42,7 +49,10 @@ def vis_mol(mol, path):
 
 
 
-def join_mols(mol, other, r1, r2, folder=None):
+def join_mols(mol, other, r1, r2, folder=None, n_red_a=None):
+    """r1 = mol's [r_grp_1 + b1], r2 = other's [b2 + r_grp_2]. If n_red_a = len(r_grp_1) is given and
+    keep_existing_typing(), the pairs r1[n_red_a:] (mol's black atoms <-> other's red stand-ins) keep
+    mol's atom typing."""
     new_mol = Chem.CombineMols(mol, other)        
     sep = mol.GetNumAtoms()
     # duplicate inter-edges from mol's r1 to r2
@@ -67,6 +77,17 @@ def join_mols(mol, other, r1, r2, folder=None):
             if folder: 
                 pass
                 # print(create_stl(new_mol, folder))    
+
+    if n_red_a is not None and keep_existing_typing():
+        typed = ed_new.GetMol()
+        for i in range(n_red_a, len(r1)):
+            src, dst = typed.GetAtomWithIdx(r1[i]), typed.GetAtomWithIdx(r2[i]+sep)
+            dst.SetAtomicNum(src.GetAtomicNum())
+            dst.SetIsAromatic(src.GetIsAromatic())
+            dst.SetFormalCharge(src.GetFormalCharge())
+            dst.SetNumExplicitHs(src.GetNumExplicitHs())
+            dst.SetNoImplicit(src.GetNoImplicit())
+        ed_new = Chem.EditableMol(typed)
 
     # delete mol's r1
     for r in sorted(r1, key=lambda x:-x):
@@ -255,7 +276,8 @@ def walk_along_edge(mols,
     #     breakpoint()        
         
     # else:    
-    new_mol = join_mols(enum_mol, mol_b, a_node_inds, b_node_inds, folder=folder)
+    new_mol = join_mols(enum_mol, mol_b, a_node_inds, b_node_inds, folder=folder,
+                        n_red_a=len(r_info['r_grp_1']))
     if Chem.MolFromSmiles(Chem.MolToSmiles(new_mol)) is None:
         # pass
         breakpoint()

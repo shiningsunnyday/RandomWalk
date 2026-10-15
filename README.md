@@ -129,10 +129,10 @@ The artifacts are saved under logs/, e.g. logs-1695308013.8280082/.
 
 ### Train property predictor. 
 ```bash
-python main.py --motifs_folder $dataset/all_groups/ --extra_label_path $dataset/all_groups/all_extra.txt --grammar_folder logs/logs-1695308013.8280082 --predefined_graph_file $dataset/red_graph.edgelist --dags_file $dataset/dags.pkl --num_epochs 1000 --walks_file {data/polymer_walks_v2_preprocess.txt | $dataset/walks}
+python main.py --motifs_folder $dataset/all_groups/ --extra_label_path $dataset/all_groups/all_extra.txt --grammar_folder logs/logs-1695308013.8280082 --predefined_graph_file $dataset/red_graph.edgelist --dags_file $dataset/dags.pkl --num_epochs 1000 --walks_file {data/polymer_walks_v2_preprocess.txt | $dataset/walks} --update_grammar
 ```
 
-The predictor is saved under grammar_folder, e.g. predictor_1696440075.4187388. 
+The predictor (and, with --update_grammar, the fine-tuned grammar) is saved under grammar_folder, e.g. predictor_1696440075.4187388. 
 
 Sample novel ones from grammar checkpoint.
 ```bash
