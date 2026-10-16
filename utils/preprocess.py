@@ -14,10 +14,26 @@ import torch
 sanitize_names = SanitizeFlags.names
 sanitize_values = SanitizeFlags.values
 
+_GROUP_NAMES = {}
+
+
+def group_names(group_dir=None):
+    """Names of the groups in group_dir (default $dataset/all_groups), line i of names.txt naming i.mol.
+    None if there is no names.txt."""
+    group_dir = group_dir or os.path.join(os.environ.get('dataset', ''), 'all_groups')
+    if group_dir not in _GROUP_NAMES:
+        path = os.path.join(group_dir, 'names.txt')
+        _GROUP_NAMES[group_dir] = open(path).read().split() if os.path.exists(path) else None
+    return _GROUP_NAMES[group_dir]
+
+
 def name_group(m):
-    """
-    ANYTHING OTHER THAN GROUP CONTRIB
-    """
+    """Name of group m (1-based index of m.mol). all_groups/names.txt, if present, fixes the names so
+    deleting or adding groups does not rename the others."""
+    names = group_names()
+    if names:
+        return names[m-1]
+
     if 'group-contrib' in os.environ['dataset']:
         """GROUP CONTRIB"""
         prefix = lambda x: "P" if x <= 41 else ("S" if x <= 73 else "L")

@@ -1,4 +1,5 @@
 import argparse
+from functools import partial
 import os
 from itertools import product, permutations
 import networkx as nx
@@ -142,10 +143,10 @@ def run_checks(rdkit=False):
         checks.append('L4 L19'.split(' '))
         checks.append('P7 S20'.split(' '))
     for check in checks:
+        if any(c not in name_to_id for c in check): # group no longer exists (see all_groups/names.txt)
+            continue
         if not reds_isomorphic(*[name_to_id[c] for c in check], rdkit=rdkit):
-            if 'P40' not in check:
-                breakpoint()    
-                bad.append(check)
+            bad.append(check)
     return bad
 
 
@@ -188,7 +189,7 @@ def build_grammar(args):
     rdkit = 'group-contrib' not in args.motifs_folder
     bad_checks = run_checks(rdkit)
     if bad_checks:
-        breakpoint()        
+        print(f"WARNING: expected connections missing: {bad_checks}")
     if args.walks_folder:
         if 'group-contrib' not in args.walks_folder:
             bad_set = check_walks(args.walks_folder)
@@ -200,17 +201,24 @@ def build_grammar(args):
 
     pargs = [(i+1, j+1, rdkit) for i in range(len(mols)) for j in range(len(mols))]            
 
+    all_matches = not args.first_correspondence_only
     with Pool(100) as p:    
-        res = p.starmap(reds_isomorphic, pargs)      
+        res = p.starmap(partial(reds_isomorphic, all_matches=all_matches), pargs)      
 
     # res = []
     # for arg in pargs:
     #     res.append(reds_isomorphic(*arg))  
     
-    for (a, b, _), k in zip(pargs, res):
-        if not k: continue
+    def size_order(k):
+        if not k: return k
         max_size = max([len(key[0]+key[1]) for key in k])
-        k = [key for key in k if len(key[0]+key[1])==max_size] + [key for key in k if len(key[0]+key[1])!=max_size]
+        return [key for key in k if len(key[0]+key[1])==max_size] + [key for key in k if len(key[0]+key[1])!=max_size]
+
+    for (a, b, _), k in zip(pargs, res):
+        # with all_matches, other non-redundant orientations go after the first-found edges, so the
+        # ids of first-found edges (used by existing walks) do not change
+        k = size_order(k[0]) + size_order(k[1]) if all_matches else size_order(k)
+        if not k: continue
         for i, key in enumerate(k):
             r_grp_1, b1, b2, r_grp_2 = key
             G.add_edge(name_group(a), name_group(b), key=i, r_grp_1=r_grp_1, b1=b1, b2=b2, r_grp_2=r_grp_2)
@@ -250,5 +258,7 @@ if __name__ == "__main__":
     parser.add_argument('--out_path')
     parser.add_argument('--motifs_folder')
     parser.add_argument('--walks_folder', help='If given, will check that all edges are represented')
+    parser.add_argument('--first_correspondence_only', action='store_true',
+                        help='old behaviour: one edge per pair of R groups (drops other orientations)')
     args = parser.parse_args()
     build_grammar(args)

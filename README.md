@@ -85,6 +85,7 @@ data/datasets/{dataset}/
 └───all_groups/
 │   │   *.mol
 │   │   all_extra.txt
+│   │   names.txt      # optional: name of group i.mol on line i (otherwise derived from i)
 │   └───with_label/
 │       │   *.png
 ```

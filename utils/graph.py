@@ -314,7 +314,9 @@ def find_isomorphic(mol1, mol2, r_grp_1, rdkit=False):
     return b2s
 
 
-def red_isomorphic(m1, m2, r_grp_1, r_grp_2, rdkit=False):
+def red_isomorphic(m1, m2, r_grp_1, r_grp_2, rdkit=False, all_matches=False):
+    """First valid edge [r_grp_1, b1, b2, r_grp_2] for this pair of R groups, or with all_matches every
+    non-redundant atom correspondence (first one unchanged), see dedupe_correspondences."""
     # if m1 == 30 and m2 == 6 and r_grp_1 == [16]:
     #     breakpoint()    
     # if m1 == 57 and m2 == 59:
@@ -349,11 +351,56 @@ def red_isomorphic(m1, m2, r_grp_1, r_grp_2, rdkit=False):
     for b2 in conn_b2s:     
         for b1 in conn_b1s:
             if (b1+b2) and check_isomorphic(mols[m1-1], mols[m2-1], r_grp_1+b1, b2+r_grp_2):
-                return [r_grp_1, b1, b2, r_grp_2] # r_grp_1 <-> b2
+                if not all_matches:
+                    return [r_grp_1, b1, b2, r_grp_2] # r_grp_1 <-> b2
+                res.append([r_grp_1, b1, b2, r_grp_2])
+    if all_matches:
+        return dedupe_correspondences(m1, m2, res)
     return res
 
 
-def reds_isomorphic(m1, m2, rdkit=False):
+_LABELED_AUTS = {}
+
+
+def labeled_automorphisms(m):
+    """Automorphisms of group m that preserve element, bond order and each atom's R-group labels
+    (so every R group maps onto itself as a set), as tuples perm[i] = image of atom i."""
+    if m not in _LABELED_AUTS:
+        mol = mols[m-1]
+        g = nx.Graph()
+        for a in mol.GetAtoms():
+            g.add_node(a.GetIdx(), symbol=a.GetSymbol(), r=a.GetProp('r_grp'))
+        for b in mol.GetBonds():
+            g.add_edge(b.GetBeginAtomIdx(), b.GetEndAtomIdx(), order=b.GetBondTypeAsDouble())
+        gm = GraphMatcher(g, g, lambda x, y: x['symbol'] == y['symbol'] and x['r'] == y['r'],
+                          lambda x, y: x['order'] == y['order'])
+        _LABELED_AUTS[m] = [tuple(iso[i] for i in range(mol.GetNumAtoms())) for iso in gm.isomorphisms_iter()]
+    return _LABELED_AUTS[m]
+
+
+def correspondence_key(m1, m2, pairs):
+    """Canonical form of an atom correspondence {(atom of m1, atom of m2)} under labeled automorphisms."""
+    pairs = list(pairs)
+    return min(tuple(sorted((a[x], b[y]) for x, y in pairs))
+               for a in labeled_automorphisms(m1) for b in labeled_automorphisms(m2))
+
+
+def dedupe_correspondences(m1, m2, edges):
+    """Keep one edge per class of equivalent atom correspondences. Edges (r1, b1, b2, r2) and (r1', b1', b2', r2')
+    are redundant iff some labeled automorphism a of m1 and b of m2 map the pairs zip(r1+b1, b2+r2) onto
+    zip(r1'+b1', b2'+r2'). Labels are preserved, so different R groups never merge (which site is used matters
+    once a node has several partners); orientations related by a symmetry within a labeled site do merge.
+    The first edge of each class is kept, in input order."""
+    seen, out = set(), []
+    for r1, b1, b2, r2 in edges:
+        key = correspondence_key(m1, m2, zip(r1 + b1, b2 + r2))
+        if key not in seen:
+            seen.add(key)
+            out.append([r1, b1, b2, r2])
+    return out
+
+
+def reds_isomorphic(m1, m2, rdkit=False, all_matches=False):
     # if m1 == 57 and m2 == 59:
     #     breakpoint()
     # if name_group(m1)== 'G30' and name_group(m2) == 'G6':
@@ -365,20 +412,25 @@ def reds_isomorphic(m1, m2, rdkit=False):
     print(name_group(m1), name_group(m2))
     r_grp_m1 = list_red_members(mols[m1-1])
     r_grp_m2 = list_red_members(mols[m2-1])
-    parallel = []
+    parallel, extra = [], []
     # if rdkit and not r_grp_m1:
     #     r_grp_m1 = [[]]
     # if rdkit and not r_grp_m2:
     #     r_grp_m2 = [[]]
     for r_grp_1, r_grp_2 in product(r_grp_m1, r_grp_m2):        
 
-        res = red_isomorphic(m1, m2, r_grp_1, r_grp_2, rdkit=rdkit)
-        if res:
+        res = red_isomorphic(m1, m2, r_grp_1, r_grp_2, rdkit=rdkit, all_matches=all_matches)
+        if res and all_matches:
+            parallel.append(res[0])
+            extra += res[1:]
+        elif res:
             parallel.append(res)
+    if all_matches:
+        return parallel, extra # extra: other orientations, appended after the first-found edges
     return parallel
 
 
-grp = '|'.join([f'(?:{name_group(i)})' for i in range(1, 98)])
+grp = '|'.join([f'(?:{name_group(i)})' for i in range(1, len(mols)+1)])
 grp = f'(?:{grp})'
 pat_chain = f'(?:->{grp})+'
 pat_inner = f'\[(?:(?:,?){pat_chain})+\]'
@@ -516,15 +568,41 @@ def search_walk(i, walk, graph, cur):
     return []
 
 
+def _group_index(name):
+    """Group index (1-based) of a motif-graph node name such as 'S32' or 'S32:1'."""
+    base = name.split(':')[0]
+    for i in range(1, len(mols)+1):
+        if name_group(i) == base:
+            return i
+    raise KeyError(name)
+
+
+def reverse_edge(graph, a, b, e1):
+    """Index of the edge b->a that undoes edge e1 of a->b: same R groups swapped and the same atom
+    correspondence (or one equivalent under labeled automorphisms, see dedupe_correspondences). With one
+    edge per pair of R groups (graphs built with --first_correspondence_only) this is the R-group match."""
+    d = graph[a][b][e1]
+    cands = [e2 for e2, d2 in graph[b][a].items()
+             if d2['r_grp_1'] == d['r_grp_2'] and d2['r_grp_2'] == d['r_grp_1']]
+    if len(cands) == 1:
+        return cands[0]
+    fwd = set(zip(d['r_grp_1'] + d['b1'], d['b2'] + d['r_grp_2'])) # (atom of a, atom of b)
+    for e2 in cands:
+        d2 = graph[b][a][e2]
+        if {(y, x) for x, y in zip(d2['r_grp_1'] + d2['b1'], d2['b2'] + d2['r_grp_2'])} == fwd:
+            return e2
+    ma, mb = _group_index(a), _group_index(b)
+    key = correspondence_key(ma, mb, fwd)
+    for e2 in cands:
+        d2 = graph[b][a][e2]
+        pairs = {(y, x) for x, y in zip(d2['r_grp_1'] + d2['b1'], d2['b2'] + d2['r_grp_2'])}
+        if correspondence_key(ma, mb, pairs) == key:
+            return e2
+    raise KeyError(f"no reverse of {a}->{b} edge {e1}")
+
+
 def find_e(graph, a, b, e1):
-    r_grp_1 = graph[a][b][e1]['r_grp_1']
-    r_grp_2 = graph[a][b][e1]['r_grp_2']
-    e2s = []
-    for e2, e2_data in graph[b][a].items():
-        if e2_data['r_grp_1'] == r_grp_2 and e2_data['r_grp_2'] == r_grp_1:
-            e2s.append(e2)
-    assert len(e2s) == 1
-    return e2s[0]
+    return reverse_edge(graph, a, b, e1)
 
 
 def bfs_traverse(G, graph):
@@ -723,9 +801,7 @@ def guess_edge_conn(graph, conn, r_lookup):
                     ind = a.children.index(b)
                     a.children[ind] = (b, i)
                     assert b.parent == a
-                    if find_edge(graph, a.val, b.val, red_j1, red_j2) != i:
-                        breakpoint()
-                    b.parent = (a, find_edge(graph, b.val, a.val, red_j2, red_j1))
+                    b.parent = (a, reverse_edge(graph, a.val, b.val, i))
                 break
             if bad:
                 break
@@ -763,9 +839,7 @@ def verify_edge_conn(graph, conn, r_lookup):
             ind = a.children.index(b)
             a.children[ind] = (b, i)
             assert b.parent == a
-            if find_edge(graph, a.val, b.val, red_j1, red_j2) != i:
-                breakpoint()
-            b.parent = (a, find_edge(graph, b.val, a.val, red_j2, red_j1))
+            b.parent = (a, reverse_edge(graph, a.val, b.val, i))
     return edge_conn
 
 

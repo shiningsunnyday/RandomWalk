@@ -943,7 +943,7 @@ def main(args):
                             feat_lookup[name_group(i)].append(np.zeros(2048,))
                        
             else:
-                for i in range(1,98):
+                for i in range(1,len(mols)+1):
                     feat_lookup[name_group(i)].append(mol2fp(mols[i-1]))          
         elif mol_feat == 'emb':
             pass
@@ -959,12 +959,12 @@ def main(args):
             for i in range(1, len(mols)+1):
                 feat_lookup[name_group(i)].append(np.zeros(len(G)))
         elif mol_feat == 'unimol':
-            assert len(mols) == 97
+            assert len(mols) == 97, 'data/group_reprs.pt has unimol features for the original 97 groups'
             unimol_feats = torch.load('data/group_reprs.pt')
             for i, unimol_feat in enumerate(unimol_feats):
                 unimol_feats[i] = unimol_feat.mean(axis=0)
             unimol_feats = torch.stack(unimol_feats)            
-            for i in range(1,98):
+            for i in range(1,len(mols)+1):
                 feat_lookup[name_group(i)].append(unimol_feats[i-1])
         elif os.path.isdir(args.mol_feat_dir):
             sorted_files = sorted(os.listdir(args.mol_feat_dir), key=lambda x: int(Path(x).stem))
