@@ -328,6 +328,12 @@ def walk_along_edge(mols,
 
 
 
+def _respects_r_sites(graph, A, B, e):
+    """Skip motif-graph edges that bond a substituent onto a non-R position (see utils.graph.edge_respects_r_sites)."""
+    from utils.graph import edge_respects_r_sites  # local import: utils.graph imports this module
+    return edge_respects_r_sites(graph, A, B, e)
+
+
 def walk_enumerate_mols(walk, graph, mols, folder=None, loop_back=False, return_all=False):
     name_lookup = {name_group(i): i for i in range(1, len(mols)+1)}
     # run some tests to make sure walk is the right format
@@ -375,7 +381,8 @@ def walk_enumerate_mols(walk, graph, mols, folder=None, loop_back=False, return_
                 if len(pargs) == 1:
                     poss_edges = pargs
                 elif len(pargs) == 0:
-                    poss_edges = graph[idx_val[a]][idx_val[b]]
+                    poss_edges = [e for e in graph[idx_val[a]][idx_val[b]]
+                                  if _respects_r_sites(graph, idx_val[a], idx_val[b], e)]
                 else:
                     raise NotImplementedError
                 bad = True
@@ -405,7 +412,9 @@ def walk_enumerate_mols(walk, graph, mols, folder=None, loop_back=False, return_
         new_chosen_edges = []   
         for idxes, mol, chosen_edge in zip(idxes, enum_mols, chosen_edges):
             for i in graph[idx_val[a]][idx_val[b]]:
-                walk_along_edge(mols, 
+                if not _respects_r_sites(graph, idx_val[a], idx_val[b], i):
+                    continue
+                walk_along_edge(mols,
                                 graph, 
                                 conn_index, 
                                 idx_val, 

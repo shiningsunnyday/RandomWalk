@@ -1,0 +1,26 @@
+from torch_geometric.nn.conv import GINConv
+from torch_geometric.nn.conv import TransformerConv
+from typing import Callable, Union
+from torch import Tensor
+from torch_geometric.typing import OptPairTensor, Adj, OptTensor, Size
+
+
+class MyGINConv(GINConv):
+    def forward(self, x: Union[Tensor, OptPairTensor], edge_index: Adj, edge_weight,
+                size: Size = None) -> Tensor:
+        """"""
+        if isinstance(x, Tensor):
+            x: OptPairTensor = (x, x)
+
+        # propagate_type: (x: OptPairTensor)
+        out = self.propagate(edge_index, x=x, edge_weight=edge_weight, size=size)
+
+        x_r = x[1]
+        if x_r is not None:
+            out += (1 + self.eps) * x_r
+
+        return self.nn(out)
+
+    def message(self, x_j: Tensor, edge_weight: OptTensor = None) -> Tensor:
+        # GINConv.message ignores edge_weight; without this override --edge_weights had no effect
+        return x_j if edge_weight is None else edge_weight.view(-1, 1) * x_j

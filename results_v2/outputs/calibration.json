@@ -1,0 +1,458 @@
+{
+ "reference": {
+  "ours": "PIM-PI-4",
+  "dataset_row": "PIM-PI-1",
+  "literature": {
+   "H2": 530.0,
+   "O2": 150.0,
+   "CO2": 1100.0,
+   "H2/N2": 11.27659574468085,
+   "O2/N2": 3.1914893617021276,
+   "CO2/CH4": 14.285714285714286
+  },
+  "measured": {
+   "H2": 220,
+   "O2": 40,
+   "CO2": 227,
+   "H2/N2": 22.8,
+   "O2/N2": 4.1,
+   "CO2/CH4": 18.3
+  },
+  "calibration_factor": {
+   "H2": 2.409090909090909,
+   "O2": 3.75,
+   "CO2": 4.845814977973569,
+   "H2/N2": 0.4945875326614408,
+   "O2/N2": 0.7784120394395434,
+   "CO2/CH4": 0.78064012490242
+  }
+ },
+ "polymers": {
+  "PIM-PI-1": {
+   "H2": {
+    "predicted": 993.2092629777059,
+    "pred_sd": 220.67588976921803,
+    "measured": 470,
+    "meas_err": 50,
+    "ratio_raw": 2.113211197824906,
+    "ratio_cal": 0.8771820066443006,
+    "calibrated": 412.27554312282126,
+    "within_raw": false,
+    "within_cal": true
+   },
+   "O2": {
+    "predicted": 143.97794083620252,
+    "pred_sd": 91.61611911513977,
+    "measured": 110,
+    "meas_err": 10,
+    "ratio_raw": 1.3088903712382047,
+    "ratio_cal": 0.3490374323301879,
+    "calibrated": 38.39411755632067,
+    "within_raw": true,
+    "within_cal": false
+   },
+   "CO2": {
+    "predicted": 825.3411594184186,
+    "pred_sd": 220.89852757581752,
+    "measured": 660,
+    "meas_err": 70,
+    "ratio_raw": 1.2505169082097252,
+    "ratio_cal": 0.2580612165123705,
+    "calibrated": 170.32040289816453,
+    "within_raw": true,
+    "within_cal": false
+   },
+   "H2/N2": {
+    "predicted": 23.838808925325804,
+    "pred_sd": 7.085929814713584,
+    "measured": 16.1,
+    "meas_err": 2.1,
+    "ratio_raw": 1.4806713618214784,
+    "ratio_cal": 2.993749870429993,
+    "calibrated": 48.19937291392289,
+    "within_raw": true,
+    "within_cal": false
+   },
+   "O2/N2": {
+    "predicted": 4.879372822492813,
+    "pred_sd": 0.9026947012340821,
+    "measured": 3.7,
+    "meas_err": 0.4,
+    "ratio_raw": 1.318749411484544,
+    "ratio_cal": 1.6941534106204772,
+    "calibrated": 6.268367619295766,
+    "within_raw": true,
+    "within_cal": false
+   },
+   "CO2/CH4": {
+    "predicted": 13.326700480314587,
+    "pred_sd": 2.1066944521134,
+    "measured": 15.8,
+    "meas_err": 3.1,
+    "ratio_raw": 0.8434620557161131,
+    "ratio_cal": 1.0804748933723407,
+    "calibrated": 17.071503315282985,
+    "within_raw": true,
+    "within_cal": true
+   }
+  },
+  "PIM-PI-2": {
+   "H2": {
+    "predicted": 682.5083475030892,
+    "pred_sd": 392.6699266150395,
+    "measured": 270,
+    "meas_err": 4,
+    "ratio_raw": 2.527808694455886,
+    "ratio_cal": 1.0492790807175376,
+    "calibrated": 283.30535179373516,
+    "within_raw": false,
+    "within_cal": true
+   },
+   "O2": {
+    "predicted": 213.28609127817683,
+    "pred_sd": 72.03449562577013,
+    "measured": 51.6,
+    "meas_err": 0.2,
+    "ratio_raw": 4.1334513813600156,
+    "ratio_cal": 1.1022537016960043,
+    "calibrated": 56.87629100751382,
+    "within_raw": false,
+    "within_cal": true
+   },
+   "CO2": {
+    "predicted": 982.6076965111946,
+    "pred_sd": 267.67823684058965,
+    "measured": 313,
+    "meas_err": 4,
+    "ratio_raw": 3.1393217140932737,
+    "ratio_cal": 0.6478418446356118,
+    "calibrated": 202.7744973709465,
+    "within_raw": false,
+    "within_cal": false
+   },
+   "H2/N2": {
+    "predicted": 28.712733541111334,
+    "pred_sd": 3.5576808670514772,
+    "measured": 21.4,
+    "meas_err": 0.4,
+    "ratio_raw": 1.3417165206126793,
+    "ratio_cal": 2.7127989122425418,
+    "calibrated": 58.05389672199039,
+    "within_raw": false,
+    "within_cal": false
+   },
+   "O2/N2": {
+    "predicted": 5.388823590138888,
+    "pred_sd": 0.41387216363574414,
+    "measured": 4.1,
+    "meas_err": 0.1,
+    "ratio_raw": 1.314347217107046,
+    "ratio_cal": 1.6884980582435183,
+    "calibrated": 6.922842038798424,
+    "within_raw": false,
+    "within_cal": false
+   },
+   "CO2/CH4": {
+    "predicted": 21.849577973637135,
+    "pred_sd": 2.1462590146320037,
+    "measured": 18.6,
+    "meas_err": 0.3,
+    "ratio_raw": 1.1747084932062974,
+    "ratio_cal": 1.5048015797972671,
+    "calibrated": 27.98930938422917,
+    "within_raw": false,
+    "within_cal": false
+   }
+  },
+  "PIM-PI-3": {
+   "H2": {
+    "predicted": 1053.7841443109467,
+    "pred_sd": 241.38260803486762,
+    "measured": 400,
+    "meas_err": 20,
+    "ratio_raw": 2.6344603607773664,
+    "ratio_cal": 1.0935495837189069,
+    "calibrated": 437.41983348756276,
+    "within_raw": false,
+    "within_cal": true
+   },
+   "O2": {
+    "predicted": 169.40841984778143,
+    "pred_sd": 77.5477369485063,
+    "measured": 85,
+    "meas_err": 6,
+    "ratio_raw": 1.993040233503311,
+    "ratio_cal": 0.5314773956008829,
+    "calibrated": 45.17557862607505,
+    "within_raw": false,
+    "within_cal": false
+   },
+   "CO2": {
+    "predicted": 878.2004122425578,
+    "pred_sd": 201.53842746606327,
+    "measured": 490,
+    "meas_err": 30,
+    "ratio_raw": 1.7922457392705262,
+    "ratio_cal": 0.36985434801309947,
+    "calibrated": 181.22863052641873,
+    "within_raw": false,
+    "within_cal": false
+   },
+   "H2/N2": {
+    "predicted": 28.187924369842694,
+    "pred_sd": 6.356092767645077,
+    "measured": 18.4,
+    "meas_err": 2.0,
+    "ratio_raw": 1.5319524114044945,
+    "ratio_cal": 3.097434347285012,
+    "calibrated": 56.99279199004422,
+    "within_raw": false,
+    "within_cal": false
+   },
+   "O2/N2": {
+    "predicted": 4.879733223787873,
+    "pred_sd": 0.45673076084025627,
+    "measured": 3.9,
+    "meas_err": 0.5,
+    "ratio_raw": 1.2512136471250959,
+    "ratio_cal": 1.6073924653400395,
+    "calibrated": 6.268830614826154,
+    "within_raw": false,
+    "within_cal": false
+   },
+   "CO2/CH4": {
+    "predicted": 18.25834203661547,
+    "pred_sd": 0.6313434622913864,
+    "measured": 17.3,
+    "meas_err": 1.5,
+    "ratio_raw": 1.0553954934459808,
+    "ratio_cal": 1.3519616271043016,
+    "calibrated": 23.388936148904417,
+    "within_raw": true,
+    "within_cal": false
+   }
+  },
+  "PIM-PI-4": {
+   "H2": {
+    "predicted": 969.8513336062551,
+    "pred_sd": 184.00523461483286,
+    "measured": 220,
+    "meas_err": 10,
+    "ratio_raw": 4.408415152755706,
+    "ratio_cal": 1.8299081766155756,
+    "calibrated": 402.57979885542665,
+    "within_raw": false,
+    "within_cal": false
+   },
+   "O2": {
+    "predicted": 96.69599294107901,
+    "pred_sd": 139.78801072798657,
+    "measured": 40,
+    "meas_err": 2,
+    "ratio_raw": 2.417399823526975,
+    "ratio_cal": 0.6446399529405268,
+    "calibrated": 25.78559811762107,
+    "within_raw": true,
+    "within_cal": true
+   },
+   "CO2": {
+    "predicted": 799.6208786584502,
+    "pred_sd": 201.86101909061358,
+    "measured": 227,
+    "meas_err": 2,
+    "ratio_raw": 3.522558936821367,
+    "ratio_cal": 0.7269280715076819,
+    "calibrated": 165.0126722322438,
+    "within_raw": false,
+    "within_cal": false
+   },
+   "H2/N2": {
+    "predicted": 24.393407530770304,
+    "pred_sd": 7.48972542441435,
+    "measured": 22.8,
+    "meas_err": 2.4,
+    "ratio_raw": 1.0698862952092238,
+    "ratio_cal": 2.1631889697098194,
+    "calibrated": 49.320708509383884,
+    "within_raw": true,
+    "within_cal": false
+   },
+   "O2/N2": {
+    "predicted": 5.137153144792114,
+    "pred_sd": 0.8562922752639444,
+    "measured": 4.1,
+    "meas_err": 0.4,
+    "ratio_raw": 1.2529641816566133,
+    "ratio_cal": 1.609641318701529,
+    "calibrated": 6.599529406676268,
+    "within_raw": true,
+    "within_cal": false
+   },
+   "CO2/CH4": {
+    "predicted": 13.745146848969457,
+    "pred_sd": 1.9695493949389842,
+    "measured": 18.3,
+    "meas_err": 2.3,
+    "ratio_raw": 0.7511009207087135,
+    "ratio_cal": 0.962160279427862,
+    "calibrated": 17.607533113529875,
+    "within_raw": false,
+    "within_cal": true
+   }
+  }
+ },
+ "summary": {
+  "novel_three": {
+   "permeability": {
+    "n": 9,
+    "geomean_ratio_raw": 2.1701645010642827,
+    "geomean_ratio_cal": 0.6157563421195245,
+    "mean_abs_log10_raw": 0.3364926551373433,
+    "mean_abs_log10_cal": 0.23326023081739716,
+    "n_within_raw": 2,
+    "n_within_cal": 4,
+    "range_raw": [
+     1.2505169082097252,
+     4.1334513813600156
+    ],
+    "range_cal": [
+     0.2580612165123705,
+     1.1022537016960043
+    ]
+   },
+   "selectivity": {
+    "n": 9,
+    "geomean_ratio_raw": 1.2394241143358837,
+    "geomean_ratio_cal": 1.8503423196170645,
+    "mean_abs_log10_raw": 0.10964981933364264,
+    "mean_abs_log10_cal": 0.2672520817910635,
+    "n_within_raw": 4,
+    "n_within_cal": 1,
+    "range_raw": [
+     0.8434620557161131,
+     1.5319524114044945
+    ],
+    "range_cal": [
+     1.0804748933723407,
+     3.097434347285012
+    ]
+   }
+  },
+  "reference_only": {
+   "permeability": {
+    "n": 3,
+    "geomean_ratio_raw": 3.348341509865975,
+    "geomean_ratio_cal": 0.9500489567822703,
+    "mean_abs_log10_raw": 0.5248297468978076,
+    "mean_abs_log10_cal": 0.19720687973546705,
+    "n_within_raw": 1,
+    "n_within_cal": 1,
+    "range_raw": [
+     2.417399823526975,
+     4.408415152755706
+    ],
+    "range_cal": [
+     0.6446399529405268,
+     1.8299081766155756
+    ]
+   },
+   "selectivity": {
+    "n": 3,
+    "geomean_ratio_raw": 1.0022856787325987,
+    "geomean_ratio_cal": 1.4963171897771004,
+    "mean_abs_log10_raw": 0.08385932870906225,
+    "mean_abs_log10_cal": 0.18619204910588474,
+    "n_within_raw": 2,
+    "n_within_cal": 1,
+    "range_raw": [
+     0.7511009207087135,
+     1.2529641816566133
+    ],
+    "range_cal": [
+     0.962160279427862,
+     2.1631889697098194
+    ]
+   }
+  },
+  "all_four": {
+   "permeability": {
+    "n": 12,
+    "geomean_ratio_raw": 2.4186717276421836,
+    "geomean_ratio_cal": 0.6862670802469029,
+    "mean_abs_log10_raw": 0.3835769280774593,
+    "mean_abs_log10_cal": 0.2242468930469146,
+    "n_within_raw": 3,
+    "n_within_cal": 5,
+    "range_raw": [
+     1.2505169082097252,
+     4.408415152755706
+    ],
+    "range_cal": [
+     0.2580612165123705,
+     1.8299081766155756
+    ]
+   },
+   "selectivity": {
+    "n": 12,
+    "geomean_ratio_raw": 1.175338161836043,
+    "geomean_ratio_cal": 1.754668087825179,
+    "mean_abs_log10_raw": 0.10320219667749753,
+    "mean_abs_log10_cal": 0.24698707361976888,
+    "n_within_raw": 6,
+    "n_within_cal": 2,
+    "range_raw": [
+     0.7511009207087135,
+     1.5319524114044945
+    ],
+    "range_cal": [
+     0.962160279427862,
+     3.097434347285012
+    ]
+   }
+  }
+ },
+ "per_property": {
+  "H2": {
+   "c": 2.409090909090909,
+   "geomean_raw": 2.4143093983619592,
+   "geomean_cal": 1.0021661653577945,
+   "within_raw": 0,
+   "within_cal": 3
+  },
+  "O2": {
+   "c": 3.75,
+   "geomean_raw": 2.2092458990021777,
+   "geomean_cal": 0.589132239733914,
+   "within_raw": 1,
+   "within_cal": 1
+  },
+  "CO2": {
+   "c": 4.845814977973569,
+   "geomean_raw": 1.9162006490206662,
+   "geomean_cal": 0.3954341339342647,
+   "within_raw": 1,
+   "within_cal": 0
+  },
+  "H2/N2": {
+   "c": 0.4945875326614408,
+   "geomean_raw": 1.4491774676140794,
+   "geomean_cal": 2.9300727816891463,
+   "within_raw": 1,
+   "within_cal": 0
+  },
+  "O2/N2": {
+   "c": 0.7784120394395434,
+   "geomean_raw": 1.2943983593561652,
+   "geomean_cal": 1.6628704256528866,
+   "within_raw": 1,
+   "within_cal": 0
+  },
+  "CO2/CH4": {
+   "c": 0.78064012490242,
+   "geomean_raw": 1.0150099464029598,
+   "geomean_cal": 1.3002277413421917,
+   "within_raw": 2,
+   "within_cal": 1
+  }
+ }
+}

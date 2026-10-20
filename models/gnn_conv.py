@@ -20,3 +20,7 @@ class MyGINConv(GINConv):
             out += (1 + self.eps) * x_r
 
         return self.nn(out)
+
+    def message(self, x_j: Tensor, edge_weight: OptTensor = None) -> Tensor:
+        # GINConv.message ignores edge_weight; without this override --edge_weights had no effect
+        return x_j if edge_weight is None else edge_weight.view(-1, 1) * x_j

@@ -1,0 +1,26 @@
+# Generated artifacts and local run state. Everything here is reproducible from the commands in PROVENANCE.md,
+# and together it is ~13 GB, so it stays out of the repo. The scripts that produce it are tracked; a handful of
+# small result files are force-added so the reported numbers are in version control.
+outputs/
+grammar/
+inputs/submitted/
+campaign/outputs/
+campaign/logs/
+baselines/outputs/
+baselines/logs/
+baselines/generation/runs/
+baselines/generation/retro/
+baselines/generation/logs/
+baselines/generation/common/
+
+__pycache__/
+*.pyc
+*.log
+*.npz
+*.npy
+*.pt
+*.pkl
+
+# vendored virtualenvs and cloned upstream baseline repos
+**/venv/
+baselines/hmgnn/

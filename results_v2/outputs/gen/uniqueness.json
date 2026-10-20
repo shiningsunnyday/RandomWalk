@@ -1,0 +1,54 @@
+{
+ "levels": {
+  "1000": {
+   "walks": 1000,
+   "motif_graphs": 1000,
+   "cycles": 751,
+   "label_multisets": 750,
+   "raw_smiles": 983,
+   "molecules": 625,
+   "n": 1000,
+   "unique_pct": 62.5,
+   "motifs_per_walk": {
+    "2": 993,
+    "3": 7
+   }
+  },
+  "1400": {
+   "walks": 1400,
+   "motif_graphs": 1400,
+   "cycles": 935,
+   "label_multisets": 933,
+   "raw_smiles": 1378,
+   "molecules": 752,
+   "n": 1400,
+   "unique_pct": 53.714285714285715,
+   "motifs_per_walk": {
+    "2": 1385,
+    "3": 15
+   }
+  }
+ },
+ "marginal": {
+  "walks": 400,
+  "new_molecules": 127,
+  "rate_pct": 31.75,
+  "needed_for_1000": 2181
+ },
+ "duplicate_groups": {
+  "n_molecules_from_several_walks": 269,
+  "n_walks_in_such_a_group": 644,
+  "rotation_only": 180,
+  "sizes": {
+   "2": 223,
+   "11": 1,
+   "4": 13,
+   "5": 5,
+   "3": 20,
+   "7": 1,
+   "6": 4,
+   "10": 1,
+   "9": 1
+  }
+ }
+}

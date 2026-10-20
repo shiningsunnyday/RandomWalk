@@ -771,6 +771,33 @@ def find_edge(graph, a, b, r_grp_a, r_grp_b):
 
 
 
+_R_SITE_OK = {}
+
+
+def edge_respects_r_sites(graph, A, B, i):
+    """False for an edge that bonds a substituent onto a non-R position of either group (e.g. a whole-ring fusion
+    consuming a single R atom, whose second bridge atom lands on an H position). Same rule as scripts/audit_r_sites.py."""
+    key = (A, B, i)
+    if key not in _R_SITE_OK:
+        d = graph[A][B][i]
+        def one_way(ga, gb, r1, b1, b2, r2):
+            ma, mb = mols[_group_index(ga) - 1], mols[_group_index(gb) - 1]
+            xs, ys = list(r1) + list(b1), list(b2) + list(r2)
+            merged_b = set(ys)
+            for x, y in zip(xs, ys):
+                if x in r1:
+                    continue
+                for n in mb.GetAtomWithIdx(y).GetNeighbors():
+                    if n.GetIdx() in merged_b:
+                        continue
+                    if not any(k.GetIdx() in r1 for k in ma.GetAtomWithIdx(x).GetNeighbors()):
+                        return False
+            return True
+        _R_SITE_OK[key] = one_way(A, B, d['r_grp_1'], d['b1'], d['b2'], d['r_grp_2']) and \
+                          one_way(B, A, d['r_grp_2'], d['b2'], d['b1'], d['r_grp_1'])
+    return _R_SITE_OK[key]
+
+
 def guess_edge_conn(graph, conn, r_lookup):
     num_tries = 100
     for _ in range(num_tries):
@@ -790,6 +817,8 @@ def guess_edge_conn(graph, conn, r_lookup):
                 if set(red_j1) & used_reds[a.id]:
                     continue
                 if set(red_j2) & used_reds[b.id]:
+                    continue
+                if not edge_respects_r_sites(graph, a.val, b.val, i):
                     continue
                 bad = False
                 used_reds[a.id] |= set(red_j1)

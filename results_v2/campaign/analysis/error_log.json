@@ -1,0 +1,337 @@
+{
+ "arm": "log",
+ "test_split_source": {
+  "file": 30
+ },
+ "n_oof": 1140,
+ "n_polymers_covered": 518,
+ "mean_times_in_test": 2.200772200772201,
+ "overall": {
+  "H2": {
+   "n": 190,
+   "n_nonpositive_pred": 0,
+   "median_signed_log_ratio": -0.021243966210653876,
+   "median_abs_log_ratio": 0.2335202217700049,
+   "frac_over": 0.4631578947368421,
+   "r2_log": 0.7313358649769122,
+   "rho": 0.8361358925808525
+  },
+  "H2/N2": {
+   "n": 190,
+   "n_nonpositive_pred": 0,
+   "median_signed_log_ratio": 0.014112516616982911,
+   "median_abs_log_ratio": 0.12656612898234101,
+   "frac_over": 0.5210526315789473,
+   "r2_log": 0.7060532606534241,
+   "rho": 0.7979605511619166
+  },
+  "O2": {
+   "n": 190,
+   "n_nonpositive_pred": 0,
+   "median_signed_log_ratio": 0.013681736436260486,
+   "median_abs_log_ratio": 0.31928087948689454,
+   "frac_over": 0.5157894736842106,
+   "r2_log": 0.6847324035094207,
+   "rho": 0.8012613488393115
+  },
+  "O2/N2": {
+   "n": 190,
+   "n_nonpositive_pred": 0,
+   "median_signed_log_ratio": 0.014101367236669535,
+   "median_abs_log_ratio": 0.04769362945098031,
+   "frac_over": 0.5631578947368421,
+   "r2_log": 0.4282231455485239,
+   "rho": 0.6257337778577114
+  },
+  "CO2": {
+   "n": 190,
+   "n_nonpositive_pred": 0,
+   "median_signed_log_ratio": -0.06204420716330841,
+   "median_abs_log_ratio": 0.34010721897216145,
+   "frac_over": 0.4368421052631579,
+   "r2_log": 0.7648132993189468,
+   "rho": 0.8440702072046294
+  },
+  "CO2/CH4": {
+   "n": 190,
+   "n_nonpositive_pred": 0,
+   "median_signed_log_ratio": 0.004967557204551519,
+   "median_abs_log_ratio": 0.09777970786730857,
+   "frac_over": 0.5210526315789473,
+   "r2_log": 0.5046944952657357,
+   "rho": 0.6654415330154327
+  }
+ },
+ "overall_all": {
+  "n": 1140,
+  "n_nonpositive_pred": 0,
+  "median_signed_log_ratio": 0.0021882905962402276,
+  "median_abs_log_ratio": 0.15294865471223112,
+  "frac_over": 0.5035087719298246,
+  "r2_log": 0.889915674155019,
+  "rho": 0.9439344245797427
+ },
+ "by_subspace": {
+  "fingerprint cluster": {
+   "0": {
+    "n": 158,
+    "n_nonpositive_pred": 0,
+    "median_signed_log_ratio": -0.042700338397178766,
+    "median_abs_log_ratio": 0.1427616778676557,
+    "frac_over": 0.43037974683544306,
+    "r2_log": 0.9394612168857328,
+    "rho": 0.9236851799330186
+   },
+   "1": {
+    "n": 338,
+    "n_nonpositive_pred": 0,
+    "median_signed_log_ratio": 0.016396340551306357,
+    "median_abs_log_ratio": 0.16388899701081605,
+    "frac_over": 0.5355029585798816,
+    "r2_log": 0.7567514325946246,
+    "rho": 0.8701792727988558
+   },
+   "2": {
+    "n": 278,
+    "n_nonpositive_pred": 0,
+    "median_signed_log_ratio": 0.014933992923603463,
+    "median_abs_log_ratio": 0.12633580602101718,
+    "frac_over": 0.539568345323741,
+    "r2_log": 0.8907906406994595,
+    "rho": 0.9394060483776959
+   },
+   "3": {
+    "n": 366,
+    "n_nonpositive_pred": 0,
+    "median_signed_log_ratio": -0.008363640238338334,
+    "median_abs_log_ratio": 0.16193596037478916,
+    "frac_over": 0.4781420765027322,
+    "r2_log": 0.8927101548306177,
+    "rho": 0.9211324341980203
+   }
+  },
+  "Murcko scaffold group": {
+   "0": {
+    "n": 244,
+    "n_nonpositive_pred": 0,
+    "median_signed_log_ratio": -0.012832535400118854,
+    "median_abs_log_ratio": 0.16341516121190877,
+    "frac_over": 0.47950819672131145,
+    "r2_log": 0.8999150265755281,
+    "rho": 0.9479965350937398
+   },
+   "1": {
+    "n": 334,
+    "n_nonpositive_pred": 0,
+    "median_signed_log_ratio": -0.00294126471604368,
+    "median_abs_log_ratio": 0.1445099593866312,
+    "frac_over": 0.4940119760479042,
+    "r2_log": 0.8923212304919236,
+    "rho": 0.940249862126006
+   },
+   "2": {
+    "n": 286,
+    "n_nonpositive_pred": 0,
+    "median_signed_log_ratio": 0.007997795332008372,
+    "median_abs_log_ratio": 0.14183674008749486,
+    "frac_over": 0.534965034965035,
+    "r2_log": 0.8730677561709592,
+    "rho": 0.9284004748397996
+   },
+   "3": {
+    "n": 276,
+    "n_nonpositive_pred": 0,
+    "median_signed_log_ratio": 0.003871650075625981,
+    "median_abs_log_ratio": 0.156297320694702,
+    "frac_over": 0.5036231884057971,
+    "r2_log": 0.8868991701868003,
+    "rho": 0.9523668061545028
+   }
+  },
+  "motif-count tertile": {
+   "0": {
+    "n": 150,
+    "n_nonpositive_pred": 0,
+    "median_signed_log_ratio": -0.012456590508256898,
+    "median_abs_log_ratio": 0.19931321153810916,
+    "frac_over": 0.4866666666666667,
+    "r2_log": 0.8078320695876723,
+    "rho": 0.9161338984064782
+   },
+   "1": {
+    "n": 320,
+    "n_nonpositive_pred": 0,
+    "median_signed_log_ratio": -0.03211820246902043,
+    "median_abs_log_ratio": 0.15179064831035183,
+    "frac_over": 0.45,
+    "r2_log": 0.8743317091536138,
+    "rho": 0.9356723846299035
+   },
+   "2": {
+    "n": 670,
+    "n_nonpositive_pred": 0,
+    "median_signed_log_ratio": 0.01692435784811805,
+    "median_abs_log_ratio": 0.14125941520449833,
+    "frac_over": 0.5328358208955224,
+    "r2_log": 0.9134139516714067,
+    "rho": 0.9553016524752405
+   }
+  },
+  "H2 permeability tertile": {
+   "0": {
+    "n": 352,
+    "n_nonpositive_pred": 0,
+    "median_signed_log_ratio": 0.017435377567185183,
+    "median_abs_log_ratio": 0.17494721603268235,
+    "frac_over": 0.5397727272727273,
+    "r2_log": 0.5880300530859437,
+    "rho": 0.8272250438660524
+   },
+   "1": {
+    "n": 336,
+    "n_nonpositive_pred": 0,
+    "median_signed_log_ratio": 0.022199052292416643,
+    "median_abs_log_ratio": 0.12422910144658142,
+    "frac_over": 0.5654761904761905,
+    "r2_log": 0.8949632097933462,
+    "rho": 0.927966653641602
+   },
+   "2": {
+    "n": 452,
+    "n_nonpositive_pred": 0,
+    "median_signed_log_ratio": -0.03330277421494724,
+    "median_abs_log_ratio": 0.15263992937421464,
+    "frac_over": 0.42920353982300885,
+    "r2_log": 0.9205110512128434,
+    "rho": 0.9227124326093851
+   }
+  },
+  "name family": {
+   "KAUST-PI": {
+    "n": 50,
+    "n_nonpositive_pred": 0,
+    "median_signed_log_ratio": 0.023511555586054576,
+    "median_abs_log_ratio": 0.1210018267542991,
+    "frac_over": 0.54,
+    "r2_log": 0.936153516333024,
+    "rho": 0.9557552776487068
+   },
+   "PIM": {
+    "n": 364,
+    "n_nonpositive_pred": 0,
+    "median_signed_log_ratio": -0.004421805151102184,
+    "median_abs_log_ratio": 0.15192990762315722,
+    "frac_over": 0.489010989010989,
+    "r2_log": 0.9009908084497351,
+    "rho": 0.9243544498062959
+   },
+   "PIM-PI": {
+    "n": 128,
+    "n_nonpositive_pred": 0,
+    "median_signed_log_ratio": 0.0182614418094452,
+    "median_abs_log_ratio": 0.09644734570396699,
+    "frac_over": 0.578125,
+    "r2_log": 0.9362872098320931,
+    "rho": 0.9594457786193641
+   },
+   "numbered entry": {
+    "n": 258,
+    "n_nonpositive_pred": 0,
+    "median_signed_log_ratio": -0.0024807923717423243,
+    "median_abs_log_ratio": 0.1663211121067124,
+    "frac_over": 0.49612403100775193,
+    "r2_log": 0.8416300839491222,
+    "rho": 0.9132996661146561
+   },
+   "other": {
+    "n": 36,
+    "n_nonpositive_pred": 0,
+    "median_signed_log_ratio": -0.039013861174830175,
+    "median_abs_log_ratio": 0.14124639330782576,
+    "frac_over": 0.4444444444444444,
+    "r2_log": 0.9092675064698518,
+    "rho": 0.914250581925875
+   },
+   "polyimide (dianhydride series)": {
+    "n": 232,
+    "n_nonpositive_pred": 0,
+    "median_signed_log_ratio": -0.01396836260561202,
+    "median_abs_log_ratio": 0.16490129953656044,
+    "frac_over": 0.47844827586206895,
+    "r2_log": 0.8627835771438662,
+    "rho": 0.9260183956024535
+   },
+   "polyimide (other)": {
+    "n": 72,
+    "n_nonpositive_pred": 0,
+    "median_signed_log_ratio": 0.04512510221515774,
+    "median_abs_log_ratio": 0.1932363130661644,
+    "frac_over": 0.5555555555555556,
+    "r2_log": 0.7345540673175048,
+    "rho": 0.8479019446268599
+   }
+  }
+ },
+ "worst_polymers": [
+  {
+   "name": "PIM-Trip-TB",
+   "line": 18,
+   "median_abs_log_ratio": 0.575
+  },
+  {
+   "name": "6FDA-HSBF-TR",
+   "line": 109,
+   "median_abs_log_ratio": 0.531
+  },
+  {
+   "name": "PIM-7",
+   "line": 14,
+   "median_abs_log_ratio": 0.506
+  },
+  {
+   "name": "KAUST-PI-5",
+   "line": 38,
+   "median_abs_log_ratio": 0.434
+  },
+  {
+   "name": "PMDA-APAF",
+   "line": 79,
+   "median_abs_log_ratio": 0.401
+  },
+  {
+   "name": "SBIDA-HTB",
+   "line": 100,
+   "median_abs_log_ratio": 0.388
+  },
+  {
+   "name": "PMDA-SBF",
+   "line": 43,
+   "median_abs_log_ratio": 0.377
+  },
+  {
+   "name": "TZPIM",
+   "line": 85,
+   "median_abs_log_ratio": 0.374
+  },
+  {
+   "name": "PIM-BTrip-TB",
+   "line": 19,
+   "median_abs_log_ratio": 0.373
+  },
+  {
+   "name": "PIM-1-COOH-2",
+   "line": 88,
+   "median_abs_log_ratio": 0.368
+  },
+  {
+   "name": "PIM-SBI-TB",
+   "line": 17,
+   "median_abs_log_ratio": 0.349
+  },
+  {
+   "name": "6FDA-DAP",
+   "line": 76,
+   "median_abs_log_ratio": 0.335
+  }
+ ]
+}

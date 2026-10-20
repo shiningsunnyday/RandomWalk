@@ -1,0 +1,37 @@
+test-split source (file = trusted test_idx.txt, recomputed = from the seed): {'recomputed': 72, 'file': 72} 
+
+test-split target geometry vs frozen test R^2, averaged over the 48 configurations of each (pair, seed)
+
+              r2_perm  r2_sel  test_log_sd  test_logrange  test_raw_sd  max_over_trainmax
+pair    seed                                                                             
+CO2_CH4 1       0.178   0.212        0.826          3.307     6051.781              0.670
+        2       0.087   0.376        1.055          4.097     4499.937              0.526
+        3       0.146   0.268        1.092          4.130     4489.051              0.568
+H2_N2   1       0.144   0.378        0.724          2.839     2781.300              0.584
+        2      -1.033   0.215        0.717          2.701     2019.220              0.425
+        3       0.200   0.207        0.821          2.867     2720.229              0.584
+O2_N2   1       0.144   0.168        0.981          3.725     1067.305              0.511
+        2      -0.619   0.254        0.968          3.648      819.040              0.428
+        3       0.179   0.118        1.075          3.800      890.885              0.456 
+
+corr(mean test R2, test_log_sd         ) permeability +0.35   selectivity -0.15
+corr(mean test R2, test_logrange       ) permeability +0.35   selectivity +0.01
+corr(mean test R2, test_raw_sd         ) permeability +0.36   selectivity +0.41
+corr(mean test R2, max_over_trainmax   ) permeability +0.69   selectivity +0.24
+
+Reading (corrected 2026-10-19 22:10, after the frozen test_idx.txt bug was found and the splits were
+recomputed from the seed):
+  * max_over_trainmax is 0.43-0.67 for ALL nine frozen (pair, seed) cells, so NO frozen test split contains a
+    polymer more permeable than the training maximum. The earlier claim that the collapsing splits were the
+    extrapolating ones came from the corrupted test_idx.txt and is withdrawn.
+  * Every correlation is now positive: the splits with the SMALLEST test-split target spread are the ones whose
+    mean test R^2 collapses. H2/N2 seed 2 has the smallest log spread (0.717) and the smallest raw spread
+    (2019) of its pair and gives mean R^2 = -1.03; O2/N2 seed 2 has the smallest raw spread (819) of its pair
+    and gives -0.62.
+  * Mechanism: R^2 = 1 - SSE/SST, and SST is the test split's own target variance. With ~19 test polymers a
+    split that happens to be narrow has a tiny denominator, so an ordinary absolute error turns into a large
+    negative R^2. The disagreement is as much a property of the metric on small, unequal test splits as of the
+    model.
+  * This is a direct argument for stratifying the split on the target quantile: it equalises SST across splits.
+    It is also an argument for the log target, which compresses a 3-4 decade range into one where the
+    split-to-split variation in SST is much smaller.

@@ -1,0 +1,183 @@
+HEAD dd797a88a090d16a610ea356360a227ad1bdfec8
+snapshot refreshed 2026-10-19T17:36:51-04:00
+code/scripts/{regen_smiles_diag,reproduce_gas_smiles}.py = repo scripts/ (untracked in git; checksums in MANIFEST.md5) + GC_DIR/WALKS_FILE env overrides
+uncommitted changes (git diff HEAD):
+diff --git a/main.py b/main.py
+index 806ec69..abffe4a 100644
+--- a/main.py
++++ b/main.py
+@@ -259,7 +259,9 @@ def train(args, dags, graph, diffusion_args, props, norm_props, mol_feats, feat_
+         random.seed(args.test_seed)
+         all_idx = list(range(len(dags_copy)))
+         random.shuffle(all_idx)
+-        idx_train, idx_test = idx_partition(all_idx, all_idx, args.test_size, train_size=args.train_size)
++        # positions -> dataset indices (was idx_partition(all_idx, all_idx, ...), which indexed all_idx by itself and
++        # wrote the wrong polymers to test_idx.txt; the split actually used for training/testing was always correct)
++        idx_train, idx_test = idx_partition(list(range(len(dags_copy))), all_idx, args.test_size, train_size=args.train_size)
+         with open(os.path.join(args.logs_folder, 'test_idx.txt'), 'w+') as f:
+             for idx in idx_test:
+                 f.write(f"{idx}\n")
+@@ -273,6 +275,31 @@ def train(args, dags, graph, diffusion_args, props, norm_props, mol_feats, feat_
+     else:
+         assert args.train_size == 1.
+         dags_copy_train, dags_copy_test, norm_props_train, norm_props_test, props_train, props_test, train_inds, test_inds = dags_copy, dags_copy, norm_props, norm_props, props, props, list(range(len(dags_copy))), list(range(len(dags_copy)))
++    heldout = None
++    if args.val_size and args.test_seed != -1:
++        # Validation set = the last val_size fraction of the (seeded, shuffled) training split. From here on the
++        # "test" variables hold the validation set, so checkpoints and best-epoch tracking use validation only;
++        # the real test split is kept aside and only evaluated/logged (heldout_* columns in metrics.csv).
++        n_val = int(round(args.val_size * len(dags_copy_train)))
++        heldout = (dags_copy_test, norm_props_test, props_test, test_inds)
++        dags_copy_train, dags_copy_test = dags_copy_train[:-n_val], dags_copy_train[-n_val:]
++        norm_props_train, norm_props_test = norm_props_train[:-n_val], norm_props_train[-n_val:]
++        props_train, props_test = props_train[:-n_val], props_train[-n_val:]
++        train_inds, test_inds = train_inds[:-n_val], train_inds[-n_val:]
++        with open(os.path.join(args.logs_folder, 'val_idx.txt'), 'w+') as f:
++            for idx in test_inds:
++                f.write(f"{idx}\n")
++    if args.train_norm and args.task == 'regression':
++        # normalization statistics from the training split only (preprocess_data used all labelled polymers)
++        p_train = np.array([np.asarray(p, dtype=float) for p in props_train])
++        mean_tr, std_tr = p_train.mean(axis=0), p_train.std(axis=0)
++        with open(os.path.join(args.logs_folder, 'mean_and_std.txt'), 'w+') as f:
++            for i in range(len(mean_tr)):
++                f.write(f"{mean_tr[i]} {std_tr[i]}\n")
++        renorm = lambda P: torch.FloatTensor((np.array([np.asarray(p, dtype=float) for p in P]) - mean_tr) / std_tr)
++        norm_props_train, norm_props_test = renorm(props_train), renorm(props_test)
++        if heldout is not None:
++            heldout = (heldout[0], renorm(heldout[2]), heldout[2], heldout[3])
+     print(f"{len(dags_copy_train)} train dags, {len(dags_copy_test)} test dags")
+     all_procs_train = []
+     all_procs_test = []
+@@ -297,6 +324,8 @@ def train(args, dags, graph, diffusion_args, props, norm_props, mol_feats, feat_
+         proc = graph.lookup_process(dags_copy_test[i].dag_id)
+         procs = [proc]
+         all_procs_test.append(procs)
++    all_procs_heldout = [[graph.lookup_process(d.dag_id)] for d in heldout[0]] if heldout is not None else []
++    heldout_feat_cache = {}
+ 
+     G = graph.graph  
+     N = len(G)    
+@@ -726,6 +755,16 @@ def train(args, dags, graph, diffusion_args, props, norm_props, mol_feats, feat_
+             print(f"epoch {epoch} avg best train acc {np.mean(best_accs_train)}")        
+             print(f"epoch {epoch} avg best train auc {np.mean(best_aucs_train)}")               
+                                       
++        metric['val_loss' if heldout is not None else 'test_loss'] = np.mean(loss_history)
++        if heldout is not None and args.task == 'regression':
++            ho_preds, _ = eval_sgd(args, model, graph, predictor, loss_func, mol_feats, feat_lookup, heldout[1],
++                                   heldout[0], heldout_feat_cache, all_procs_heldout, mean, std)[:2]
++            y_ho_hat = np.array(ho_preds)
++            y_ho = np.array(heldout[1]) if args.norm_metrics else np.array(heldout[2], dtype=float)
++            for i in range(len(mean)):
++                metric[f'heldout_{metric_names[i]}_r^2'] = r2_score(y_ho[:, i], y_ho_hat[:, i])
++                metric[f'heldout_{metric_names[i]}_mae'] = np.abs(y_ho_hat[:, i] - y_ho[:, i]).mean()
++                metric[f'heldout_{metric_names[i]}_mse'] = ((y_ho_hat[:, i] - y_ho[:, i]) ** 2).mean()
+         metrics.append(metric)
+         df = pd.DataFrame(metrics)
+         df.to_csv(os.path.join(args.logs_folder, 'metrics.csv'))
+@@ -1260,6 +1299,8 @@ if __name__ == "__main__":
+     parser.add_argument('--test_seed', default=-1, type=int, help='seed for splitting data')
+     parser.add_argument('--train_size', default=1., type=float)
+     parser.add_argument('--test_size', default=0., type=float)
++    parser.add_argument('--val_size', default=0., type=float, help='fraction of the training split held out for validation (model selection/checkpoints); the test split is then only evaluated')
++    parser.add_argument('--train_norm', action='store_true', help='normalize properties with training-split statistics instead of all labelled data')
+     parser.add_argument('--task', choices=['regression','classification'], default='regression')
+ 
+     # training params
+diff --git a/models/gnn_conv.py b/models/gnn_conv.py
+index 0dc7862..6d33ff4 100644
+--- a/models/gnn_conv.py
++++ b/models/gnn_conv.py
+@@ -20,3 +20,7 @@ class MyGINConv(GINConv):
+             out += (1 + self.eps) * x_r
+ 
+         return self.nn(out)
++
++    def message(self, x_j: Tensor, edge_weight: OptTensor = None) -> Tensor:
++        # GINConv.message ignores edge_weight; without this override --edge_weights had no effect
++        return x_j if edge_weight is None else edge_weight.view(-1, 1) * x_j
+diff --git a/utils/graph.py b/utils/graph.py
+index d8adc96..e641bd6 100644
+--- a/utils/graph.py
++++ b/utils/graph.py
+@@ -771,6 +771,33 @@ def find_edge(graph, a, b, r_grp_a, r_grp_b):
+ 
+ 
+ 
++_R_SITE_OK = {}
++
++
++def edge_respects_r_sites(graph, A, B, i):
++    """False for an edge that bonds a substituent onto a non-R position of either group (e.g. a whole-ring fusion
++    consuming a single R atom, whose second bridge atom lands on an H position). Same rule as scripts/audit_r_sites.py."""
++    key = (A, B, i)
++    if key not in _R_SITE_OK:
++        d = graph[A][B][i]
++        def one_way(ga, gb, r1, b1, b2, r2):
++            ma, mb = mols[_group_index(ga) - 1], mols[_group_index(gb) - 1]
++            xs, ys = list(r1) + list(b1), list(b2) + list(r2)
++            merged_b = set(ys)
++            for x, y in zip(xs, ys):
++                if x in r1:
++                    continue
++                for n in mb.GetAtomWithIdx(y).GetNeighbors():
++                    if n.GetIdx() in merged_b:
++                        continue
++                    if not any(k.GetIdx() in r1 for k in ma.GetAtomWithIdx(x).GetNeighbors()):
++                        return False
++            return True
++        _R_SITE_OK[key] = one_way(A, B, d['r_grp_1'], d['b1'], d['b2'], d['r_grp_2']) and \
++                          one_way(B, A, d['r_grp_2'], d['b2'], d['b1'], d['r_grp_1'])
++    return _R_SITE_OK[key]
++
++
+ def guess_edge_conn(graph, conn, r_lookup):
+     num_tries = 100
+     for _ in range(num_tries):
+@@ -791,6 +818,8 @@ def guess_edge_conn(graph, conn, r_lookup):
+                     continue
+                 if set(red_j2) & used_reds[b.id]:
+                     continue
++                if not edge_respects_r_sites(graph, a.val, b.val, i):
++                    continue
+                 bad = False
+                 used_reds[a.id] |= set(red_j1)
+                 used_reds[b.id] |= set(red_j2)
+diff --git a/utils/walk.py b/utils/walk.py
+index 4ae9939..1735c4b 100644
+--- a/utils/walk.py
++++ b/utils/walk.py
+@@ -328,6 +328,12 @@ def walk_along_edge(mols,
+ 
+ 
+ 
++def _respects_r_sites(graph, A, B, e):
++    """Skip motif-graph edges that bond a substituent onto a non-R position (see utils.graph.edge_respects_r_sites)."""
++    from utils.graph import edge_respects_r_sites  # local import: utils.graph imports this module
++    return edge_respects_r_sites(graph, A, B, e)
++
++
+ def walk_enumerate_mols(walk, graph, mols, folder=None, loop_back=False, return_all=False):
+     name_lookup = {name_group(i): i for i in range(1, len(mols)+1)}
+     # run some tests to make sure walk is the right format
+@@ -375,7 +381,8 @@ def walk_enumerate_mols(walk, graph, mols, folder=None, loop_back=False, return_
+                 if len(pargs) == 1:
+                     poss_edges = pargs
+                 elif len(pargs) == 0:
+-                    poss_edges = graph[idx_val[a]][idx_val[b]]
++                    poss_edges = [e for e in graph[idx_val[a]][idx_val[b]]
++                                  if _respects_r_sites(graph, idx_val[a], idx_val[b], e)]
+                 else:
+                     raise NotImplementedError
+                 bad = True
+@@ -405,7 +412,9 @@ def walk_enumerate_mols(walk, graph, mols, folder=None, loop_back=False, return_
+         new_chosen_edges = []   
+         for idxes, mol, chosen_edge in zip(idxes, enum_mols, chosen_edges):
+             for i in graph[idx_val[a]][idx_val[b]]:
+-                walk_along_edge(mols, 
++                if not _respects_r_sites(graph, idx_val[a], idx_val[b], i):
++                    continue
++                walk_along_edge(mols,
+                                 graph, 
+                                 conn_index, 
+                                 idx_val, 

@@ -1,0 +1,8 @@
+{
+ "_source": "Materials and Methods, synthesis paragraphs of the submitted main text (one GPC + BET line per polymer).",
+ "_note": "Reviewer 2 asked for molecular weight and polydispersity; they are reported per polymer in the synthesis section but never related to the transport data, which is what the Discussion addition does.",
+ "PIM-PI-1": {"Mn_kDa": 6.9, "Mw_kDa": 11.1, "D": 1.62, "BET_m2_g": 441},
+ "PIM-PI-2": {"Mn_kDa": 5.8, "Mw_kDa": 8.3, "D": 1.42, "BET_m2_g": 479},
+ "PIM-PI-3": {"Mn_kDa": 7.4, "Mw_kDa": 12.2, "D": 1.62, "BET_m2_g": 391},
+ "PIM-PI-4": {"Mn_kDa": 24.9, "Mw_kDa": 48.6, "D": 1.96, "BET_m2_g": 420}
+}

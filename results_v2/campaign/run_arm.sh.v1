@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# usage: run_arm.sh <jobs file> <arm name> <parallel>
+# jobs file lines: <pc:01|21|43> <seed> <ew> <fw> <init> <dir> <epochs> <arm> [extra flags...]
+set -u
+H=$(cd "$(dirname "$0")" && pwd)
+J=$1; ARM=$2; P=${3:-60}
+mkdir -p "$H/logs/$ARM"
+cat > "$H/.run_one.sh" <<'INNER'
+#!/usr/bin/env bash
+H=$1; ARM=$2; shift 2
+PCK=$1; shift
+PC="${PCK:0:1} ${PCK:1:1}"
+s=$1; ew=$2; fw=$3; init=$4; dir=$5; ep=$6
+tag="p${PCK}_ew${ew}_fw${fw}_${init}_dir${dir}_s${s}_e${ep}"
+bash "$H/train.sh" "$PC" "$@" > "$H/logs/$ARM/$tag.log" 2>&1
+echo "$tag rc=$?"
+INNER
+chmod +x "$H/.run_one.sh"
+xargs -P "$P" -L 1 "$H/.run_one.sh" "$H" "$ARM" < "$J"
+echo "ARM $ARM DONE $(date)"

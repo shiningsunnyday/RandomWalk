@@ -259,7 +259,9 @@ def train(args, dags, graph, diffusion_args, props, norm_props, mol_feats, feat_
         random.seed(args.test_seed)
         all_idx = list(range(len(dags_copy)))
         random.shuffle(all_idx)
-        idx_train, idx_test = idx_partition(all_idx, all_idx, args.test_size, train_size=args.train_size)
+        # positions -> dataset indices (was idx_partition(all_idx, all_idx, ...), which indexed all_idx by itself and
+        # wrote the wrong polymers to test_idx.txt; the split actually used for training/testing was always correct)
+        idx_train, idx_test = idx_partition(list(range(len(dags_copy))), all_idx, args.test_size, train_size=args.train_size)
         with open(os.path.join(args.logs_folder, 'test_idx.txt'), 'w+') as f:
             for idx in idx_test:
                 f.write(f"{idx}\n")
@@ -273,6 +275,31 @@ def train(args, dags, graph, diffusion_args, props, norm_props, mol_feats, feat_
     else:
         assert args.train_size == 1.
         dags_copy_train, dags_copy_test, norm_props_train, norm_props_test, props_train, props_test, train_inds, test_inds = dags_copy, dags_copy, norm_props, norm_props, props, props, list(range(len(dags_copy))), list(range(len(dags_copy)))
+    heldout = None
+    if args.val_size and args.test_seed != -1:
+        # Validation set = the last val_size fraction of the (seeded, shuffled) training split. From here on the
+        # "test" variables hold the validation set, so checkpoints and best-epoch tracking use validation only;
+        # the real test split is kept aside and only evaluated/logged (heldout_* columns in metrics.csv).
+        n_val = int(round(args.val_size * len(dags_copy_train)))
+        heldout = (dags_copy_test, norm_props_test, props_test, test_inds)
+        dags_copy_train, dags_copy_test = dags_copy_train[:-n_val], dags_copy_train[-n_val:]
+        norm_props_train, norm_props_test = norm_props_train[:-n_val], norm_props_train[-n_val:]
+        props_train, props_test = props_train[:-n_val], props_train[-n_val:]
+        train_inds, test_inds = train_inds[:-n_val], train_inds[-n_val:]
+        with open(os.path.join(args.logs_folder, 'val_idx.txt'), 'w+') as f:
+            for idx in test_inds:
+                f.write(f"{idx}\n")
+    if args.train_norm and args.task == 'regression':
+        # normalization statistics from the training split only (preprocess_data used all labelled polymers)
+        p_train = np.array([np.asarray(p, dtype=float) for p in props_train])
+        mean_tr, std_tr = p_train.mean(axis=0), p_train.std(axis=0)
+        with open(os.path.join(args.logs_folder, 'mean_and_std.txt'), 'w+') as f:
+            for i in range(len(mean_tr)):
+                f.write(f"{mean_tr[i]} {std_tr[i]}\n")
+        renorm = lambda P: torch.FloatTensor((np.array([np.asarray(p, dtype=float) for p in P]) - mean_tr) / std_tr)
+        norm_props_train, norm_props_test = renorm(props_train), renorm(props_test)
+        if heldout is not None:
+            heldout = (heldout[0], renorm(heldout[2]), heldout[2], heldout[3])
     print(f"{len(dags_copy_train)} train dags, {len(dags_copy_test)} test dags")
     all_procs_train = []
     all_procs_test = []
@@ -297,6 +324,8 @@ def train(args, dags, graph, diffusion_args, props, norm_props, mol_feats, feat_
         proc = graph.lookup_process(dags_copy_test[i].dag_id)
         procs = [proc]
         all_procs_test.append(procs)
+    all_procs_heldout = [[graph.lookup_process(d.dag_id)] for d in heldout[0]] if heldout is not None else []
+    heldout_feat_cache = {}
 
     G = graph.graph  
     N = len(G)    
@@ -726,6 +755,16 @@ def train(args, dags, graph, diffusion_args, props, norm_props, mol_feats, feat_
             print(f"epoch {epoch} avg best train acc {np.mean(best_accs_train)}")        
             print(f"epoch {epoch} avg best train auc {np.mean(best_aucs_train)}")               
                                       
+        metric['val_loss' if heldout is not None else 'test_loss'] = np.mean(loss_history)
+        if heldout is not None and args.task == 'regression':
+            ho_preds, _ = eval_sgd(args, model, graph, predictor, loss_func, mol_feats, feat_lookup, heldout[1],
+                                   heldout[0], heldout_feat_cache, all_procs_heldout, mean, std)[:2]
+            y_ho_hat = np.array(ho_preds)
+            y_ho = np.array(heldout[1]) if args.norm_metrics else np.array(heldout[2], dtype=float)
+            for i in range(len(mean)):
+                metric[f'heldout_{metric_names[i]}_r^2'] = r2_score(y_ho[:, i], y_ho_hat[:, i])
+                metric[f'heldout_{metric_names[i]}_mae'] = np.abs(y_ho_hat[:, i] - y_ho[:, i]).mean()
+                metric[f'heldout_{metric_names[i]}_mse'] = ((y_ho_hat[:, i] - y_ho[:, i]) ** 2).mean()
         metrics.append(metric)
         df = pd.DataFrame(metrics)
         df.to_csv(os.path.join(args.logs_folder, 'metrics.csv'))
@@ -1260,6 +1299,8 @@ if __name__ == "__main__":
     parser.add_argument('--test_seed', default=-1, type=int, help='seed for splitting data')
     parser.add_argument('--train_size', default=1., type=float)
     parser.add_argument('--test_size', default=0., type=float)
+    parser.add_argument('--val_size', default=0., type=float, help='fraction of the training split held out for validation (model selection/checkpoints); the test split is then only evaluated')
+    parser.add_argument('--train_norm', action='store_true', help='normalize properties with training-split statistics instead of all labelled data')
     parser.add_argument('--task', choices=['regression','classification'], default='regression')
 
     # training params

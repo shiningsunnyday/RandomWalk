@@ -1,0 +1,234 @@
+{
+ "table1": [
+  "63%",
+  "100%",
+  "90%",
+  "62%",
+  "100%",
+  "0.91",
+  "54%"
+ ],
+ "table1_exact": {
+  "valid_walk": 0.6316989737742303,
+  "valid_smarts": 1.0,
+  "valid_smiles": 0.9025270758122743,
+  "unique": 0.625,
+  "novel": 0.995,
+  "diversity": 0.9144701789183638,
+  "retro": 0.539,
+  "counters": {
+   "num_sampled": 116822,
+   "num_tried": 1754,
+   "num_valid": 1000,
+   "walk_invalid": 646,
+   "chemical_invalid": 0,
+   "chemical_invalid_smiles": 108
+  },
+  "n_gen": 1000
+ },
+ "failure_modes": {
+  "rows": [
+   [
+    "Sampled trajectories",
+    "did not close back to the starting motif",
+    "115,068",
+    "98.5%"
+   ],
+   [
+    "Closed walks",
+    "no legal R-group attachment (invalid walk)",
+    "646",
+    "36.8%"
+   ],
+   [
+    "Assembled walks",
+    "motif-level assembly failed",
+    "0",
+    "0.0%"
+   ],
+   [
+    "Assembled walks",
+    "final structure failed sanitization",
+    "108",
+    "9.7%"
+   ],
+   [
+    "Valid structures",
+    "kept",
+    "1,000",
+    "0.9%"
+   ]
+  ],
+  "header": [
+   "Stage",
+   "Outcome",
+   "Count",
+   "Share"
+  ],
+  "closure_pct": "1.5",
+  "n_sampled": "116,822",
+  "n_closed": "1,754"
+ },
+ "table2": [
+  [
+   "0.47 \u00b1 0.21",
+   "0.48 \u00b1 0.27"
+  ],
+  [
+   "0.50 \u00b1 0.28",
+   "0.70 \u00b1 0.08"
+  ],
+  [
+   "0.35 \u00b1 0.19",
+   "0.51 \u00b1 0.36"
+  ],
+  [
+   "0.62 \u00b1 0.17",
+   "0.54 \u00b1 0.13"
+  ],
+  [
+   "0.37 \u00b1 0.18",
+   "0.49 \u00b1 0.34"
+  ],
+  [
+   "0.43 \u00b1 0.13",
+   "0.75 \u00b1 0.01"
+  ]
+ ],
+ "selected_configs": {
+  "CO2_CH4": {
+   "ew": "False",
+   "fw": "True",
+   "init": "normal",
+   "directed": "True"
+  },
+  "H2_N2": {
+   "ew": "False",
+   "fw": "False",
+   "init": "normal",
+   "directed": "True"
+  },
+  "O2_N2": {
+   "ew": "False",
+   "fw": "True",
+   "init": "normal",
+   "directed": "True"
+  }
+ },
+ "n_motifs": 99,
+ "motif_size": "14.4",
+ "gen_motifs_mean": 2.007,
+ "gen_motifs_max": 3,
+ "steps_text": "2.0 (at most 3)",
+ "dataset_motifs_mean": 7.359649122807017,
+ "h2_ratio_range": "2.1 \u2013 4.4",
+ "co2ch4_within_pct": 25,
+ "h2n2_within_pct": 54,
+ "perm_ratios": {
+  "H2": [
+   2.113211197824906,
+   2.527808694455886,
+   2.6344603607773664,
+   4.408415152755706
+  ],
+  "O2": [
+   1.3088903712382047,
+   4.1334513813600156,
+   1.993040233503311,
+   2.417399823526975
+  ],
+  "CO2": [
+   1.2505169082097252,
+   3.1393217140932737,
+   1.7922457392705262,
+   3.522558936821367
+  ]
+ },
+ "sel_ratios": {
+  "H2/N2": [
+   1.4806713618214784,
+   1.3417165206126793,
+   1.5319524114044945,
+   1.0698862952092238
+  ],
+  "O2/N2": [
+   1.318749411484544,
+   1.314347217107046,
+   1.2512136471250959,
+   1.2529641816566133
+  ],
+  "CO2/CH4": [
+   0.8434620557161131,
+   1.1747084932062974,
+   1.0553954934459808,
+   0.7511009207087135
+  ]
+ },
+ "lit_vs_lab": {
+  "dataset_row": "PIM-PI-1",
+  "measured_as": "PIM-PI-4",
+  "lit": {
+   "H2": 530.0,
+   "O2": 150.0,
+   "CO2": 1100.0
+  },
+  "lab": {
+   "H2": 220,
+   "O2": 40,
+   "CO2": 227
+  },
+  "ratios": {
+   "H2": 2.409090909090909,
+   "O2": 3.75,
+   "CO2": 4.845814977973569
+  },
+  "lit_text": "530, 150 and 1100",
+  "lab_text": "220, 40 and 227",
+  "ratio_range": "2.4 \u2013 4.8"
+ },
+ "gpc": {
+  "mn": {
+   "PIM-PI-1": 6.9,
+   "PIM-PI-2": 5.8,
+   "PIM-PI-3": 7.4,
+   "PIM-PI-4": 24.9
+  },
+  "disp": {
+   "PIM-PI-1": 1.62,
+   "PIM-PI-2": 1.42,
+   "PIM-PI-3": 1.62,
+   "PIM-PI-4": 1.96
+  },
+  "bet": {
+   "PIM-PI-1": 441,
+   "PIM-PI-2": 479,
+   "PIM-PI-3": 391,
+   "PIM-PI-4": 420
+  },
+  "mn_range": "5.8 \u2013 24.9",
+  "mn_low_text": "6.9, 5.8, 7.4",
+  "disp_range": "1.42 \u2013 1.96",
+  "bet_range": "391 \u2013 479",
+  "spearman_mn_H2": [
+   -0.4,
+   0.6
+  ],
+  "spearman_mn_O2": [
+   -0.4,
+   0.6
+  ],
+  "spearman_mn_CO2": [
+   -0.4,
+   0.6
+  ]
+ },
+ "ablation_text": "directed message passing improved the test metrics (MAE 0.456 vs 0.468, R\u00b2 0.58 vs 0.51 without edge weights), whereas edge weights worsened them (MAE 0.518 undirected and 0.520 directed), and the configuration selected on the validation set uses directed, unweighted message passing for all three gas pairs.",
+ "ablation_margin_within_spread": true,
+ "ablation_dir_paired": {
+  "mean": -0.02592394467002858,
+  "se": 0.10682219377691402,
+  "t": -0.24268313309655282,
+  "n": 60
+ },
+ "ablation_text_directed": "In the ablation the directed model is nominally ahead of the undirected one (MAE 0.456 against 0.468, R\u00b2 0.58 against 0.51), by a margin smaller than the spread across splits (\u00b1 0.104), and repeating the comparison on ten train/test splits does not resolve a difference in either direction (paired over 60 property\u2013split pairs, t = 0.2). We therefore use directed message passing for the reason above rather than as an accuracy claim. Weighting the aggregation by the transition probabilities, by contrast, is clearly harmful (MAE 0.520 against 0.456, R\u00b2 \u22120.03 against 0.58)."
+}

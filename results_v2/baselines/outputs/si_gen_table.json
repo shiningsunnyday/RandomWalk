@@ -1,0 +1,205 @@
+{
+ "header": [
+  "Method",
+  "Valid",
+  "Unique",
+  "Novel",
+  "Diversity",
+  "Retro*",
+  "Median heavy atoms"
+ ],
+ "rows": [
+  [
+   "Ours (motif-walk, best-first)",
+   "90%",
+   "62%",
+   "100%",
+   "0.91",
+   "54%",
+   "16"
+  ],
+  [
+   "The 114 dataset monomers (reference)",
+   "100%",
+   "97%",
+   "0%",
+   "0.82",
+   "9%",
+   "52"
+  ],
+  [
+   "Graph GA (unconditional)",
+   "100%",
+   "91%",
+   "100%",
+   "0.91",
+   "33%",
+   "26"
+  ],
+  [
+   "Graph GA (CO\u2082-conditioned)",
+   "100%",
+   "100%",
+   "100%",
+   "0.60",
+   "0%",
+   "60"
+  ],
+  [
+   "REINVENT 4 (transfer + RL)",
+   "98%",
+   "72%",
+   "99%",
+   "0.86",
+   "24%",
+   "23"
+  ],
+  [
+   "REINVENT 4 (transfer only)",
+   "88%",
+   "42%",
+   "53%",
+   "0.85",
+   "13%",
+   "44"
+  ],
+  [
+   "Hier-VAE",
+   "100%",
+   "22%",
+   "54%",
+   "0.85",
+   "16%",
+   "45"
+  ],
+  [
+   "JT-VAE",
+   "100%",
+   "22%",
+   "92%",
+   "0.72",
+   "20%",
+   "57"
+  ],
+  [
+   "DEG (grammar induction only)",
+   "100%",
+   "50%",
+   "60%",
+   "0.81",
+   "4%",
+   "43"
+  ],
+  [
+   "SMILES LSTM",
+   "94%",
+   "11%",
+   "1.0%",
+   "0.81",
+   "7%",
+   "50"
+  ],
+  [
+   "SMILES LSTM (early-stopped)",
+   "17%",
+   "7%",
+   "22%",
+   "0.81",
+   "12%",
+   "39"
+  ],
+  [
+   "SMILES transformer",
+   "86%",
+   "11%",
+   "0.4%",
+   "0.81",
+   "16%",
+   "54"
+  ],
+  [
+   "SMILES transformer (early-stopped)",
+   "0.2%",
+   "0.1%",
+   "100%",
+   "0.00",
+   "\u2014",
+   "1"
+  ]
+ ],
+ "missing": [],
+ "size_vs_retro": {
+  "n": 12,
+  "pearson_r": -0.797,
+  "pearson_p": 0.0019246324697456314,
+  "spearman_rho": -0.543,
+  "spearman_p": 0.0681500850864122,
+  "points": [
+   {
+    "method": "Ours (motif-walk, best-first)",
+    "median_heavy_atoms": 16.0,
+    "retro": 0.539
+   },
+   {
+    "method": "The 114 dataset monomers (reference)",
+    "median_heavy_atoms": 52.0,
+    "retro": 0.08888888888888889
+   },
+   {
+    "method": "Graph GA (unconditional)",
+    "median_heavy_atoms": 25.5,
+    "retro": 0.3333333333333333
+   },
+   {
+    "method": "Graph GA (CO\u2082-conditioned)",
+    "median_heavy_atoms": 60.0,
+    "retro": 0.0
+   },
+   {
+    "method": "REINVENT 4 (transfer + RL)",
+    "median_heavy_atoms": 23.0,
+    "retro": 0.24
+   },
+   {
+    "method": "REINVENT 4 (transfer only)",
+    "median_heavy_atoms": 44.0,
+    "retro": 0.13333333333333333
+   },
+   {
+    "method": "Hier-VAE",
+    "median_heavy_atoms": 45.0,
+    "retro": 0.16
+   },
+   {
+    "method": "JT-VAE",
+    "median_heavy_atoms": 57.0,
+    "retro": 0.2
+   },
+   {
+    "method": "DEG (grammar induction only)",
+    "median_heavy_atoms": 43.0,
+    "retro": 0.04
+   },
+   {
+    "method": "SMILES LSTM",
+    "median_heavy_atoms": 50.0,
+    "retro": 0.06666666666666667
+   },
+   {
+    "method": "SMILES LSTM (early-stopped)",
+    "median_heavy_atoms": 39.0,
+    "retro": 0.12
+   },
+   {
+    "method": "SMILES transformer",
+    "median_heavy_atoms": 54.0,
+    "retro": 0.16
+   }
+  ],
+  "r_text": "\u22120.80",
+  "dataset_retro": "9%",
+  "ours_retro": "54%",
+  "ours_median_ha": "16",
+  "dataset_median_ha": "52"
+ }
+}
