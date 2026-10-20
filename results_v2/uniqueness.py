@@ -87,6 +87,25 @@ out['duplicate_groups'] = {
     'n_molecules_from_several_walks': len(dups), 'n_walks_in_such_a_group': sum(len(v) for v in dups.values()),
     'rotation_only': sum(len({cycle(recs[i]['walk']) for i in v}) == 1 for v in dups.values()),
     'sizes': dict(collections.Counter(len(v) for v in dups.values()))}
+# the unique-cycle enumeration (gen_unique.py): the same best-first search, but a closed walk whose canonical cycle
+# has already been accepted is rejected, so no two accepted walks are rotations or reflections of one another
+UQ = os.path.join(G, 'unique_n1000.json')
+if os.path.exists(UQ):
+    uR = json.load(open(UQ))
+    uC = [Chem.MolToSmiles(Chem.MolFromSmiles(l.rstrip('\n').split(' ')[0]))
+          for l in open(os.path.join(G, 'unique_n1000_clean.txt'))]
+    assert len({cycle(r['walk']) for r in uR}) == len(uR), 'the unique run has duplicate cycles'
+    out['unique'] = {
+        'walks': len({r['walk'] for r in uR}), 'motif_graphs': n_graphs(uR),
+        'cycles': len({cycle(r['walk']) for r in uR}), 'label_multisets': len({labels(r) for r in uR}),
+        'raw_smiles': len({r['raw_smiles'] for r in uR}), 'molecules': len(set(uC)),
+        'n': len(uR), 'unique_pct': 100 * len(set(uC)) / len(uR),
+        'motifs_per_walk': dict(collections.Counter(len(r['walk'].split('->')) - 1 for r in uR)),
+        'novel_pct': 100 * sum(r['novel'] for r in uR) / len(uR),
+        # the molecules the original 1000 found and this run does not, and the other way round
+        'molecules_gained': len(set(uC) - set(can[:1000])), 'molecules_lost': len(set(can[:1000]) - set(uC)),
+        'stats': json.load(open(os.path.join(G, 'unique_n1000_stats.json')))}
+
 json.dump(out, open(os.path.join(G, 'uniqueness.json'), 'w'), indent=1)
 L = out['levels']
 for n in (1000, 1400):
@@ -98,3 +117,10 @@ print(f"walks 1001-1400 add {out['marginal']['new_molecules']} new molecules "
       f"{out['marginal']['needed_for_1000']} walks")
 print(f"{out['duplicate_groups']['n_molecules_from_several_walks']} molecules come from more than one walk, "
       f"{out['duplicate_groups']['rotation_only']} of them from one cycle read at different starting motifs")
+if 'unique' in out:
+    u = out['unique']
+    print(f"unique-cycle {u['n']} walks: " + ' '.join(f'{k} {u[k]}' for k in
+          ('walks', 'motif_graphs', 'cycles', 'label_multisets', 'raw_smiles', 'molecules'))
+          + f" -> Unique {u['unique_pct']:.0f}% (novel {u['novel_pct']:.0f}%); "
+          f"{u['stats']['dup']} duplicate cycles skipped of {u['stats']['closed']} closures examined; "
+          f"{u['molecules_gained']} molecules the original 1000 missed, {u['molecules_lost']} it found and this does not")

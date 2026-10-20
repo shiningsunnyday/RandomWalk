@@ -50,5 +50,27 @@
    "10": 1,
    "9": 1
   }
+ },
+ "unique": {
+  "walks": 1000,
+  "motif_graphs": 1000,
+  "cycles": 1000,
+  "label_multisets": 995,
+  "raw_smiles": 996,
+  "molecules": 753,
+  "n": 1000,
+  "unique_pct": 75.3,
+  "motifs_per_walk": {
+   "2": 975,
+   "3": 25
+  },
+  "novel_pct": 100.0,
+  "molecules_gained": 147,
+  "molecules_lost": 19,
+  "stats": {
+   "closed": 2882,
+   "dup": 602,
+   "invalid": 1280
+  }
  }
 }

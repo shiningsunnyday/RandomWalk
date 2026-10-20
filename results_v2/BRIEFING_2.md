@@ -243,7 +243,11 @@ in the dataset.
 
 ---
 
-## 3. Item 4 is settled: the 62% is bookkeeping, and no rerun can raise it
+## 3. The 62% is bookkeeping — but your item 3 raises it to 75%, which corrects me
+
+**Read §3a first: the heading of this section used to say "and no rerun can raise it", and that was wrong.** Your
+item 3 is a rerun that raises it, because it changes the search rather than post-processing its output. Everything
+below about *where* the 38% goes stands unchanged and is what §3a builds on.
 
 You asked me to re-run with the `if is_novel(seen_dags, root)` check, "unless you have evidence to the contrary".
 There is evidence to the contrary, and the 1400-structure enumeration that finished this morning closes the
@@ -279,7 +283,7 @@ included". That label was wrong: 750 is the motif-label multiset, and a real DAG
 nothing at all — every one of the 1000 walks is a distinct motif graph. The conclusion is unchanged but it is
 stronger than I put it: the redundancy is not in the generator, it is in the map from walks to finished molecules.
 
-**Third, a deduped 1000 is not available at any reasonable price, and would be the wrong thing to report.** The
+**Third — this is the part §3a overturns — a deduped 1000 looked unavailable at any reasonable price.** The
 1400-walk enumeration (8.6 h) yields **752** distinct molecules, so Unique *falls* from 62% to 54% with depth —
 walks 1001-1400 add only 127 new molecules, a 32% marginal rate, because best-first exhausts the most probable
 motif pairs first. Extrapolating that rate, 1000 distinct structures needs roughly 2200 walks and another ten-odd
@@ -295,6 +299,54 @@ enumerating deeper lowers the figure to 54%. It is honest, it pre-empts the obvi
 nothing. **Decision 3 in §5 is therefore withdrawn — unless you disagree, in which case deleting the `_UQ` block in
 `apply_main.py` reverts it.** The "high degree of uniqueness" wording above Table 1 is still untouched and still
 listed under decision 5.
+
+---
+
+## 3a. Your item 3: the search now rejects duplicate cycles, and Unique goes 62% → 75%
+
+`results_v2/gen_unique.py`, 1000 structures, 8.1 h. It wraps `diffusion.verify_walk` so that a closed walk whose
+canonical cycle — canonical over rotation *and* reflection — has already been accepted is rejected and treated as an
+invalid walk, exactly as you asked: `L22->S32->L22` and `S32->L22->S32` can no longer both be spent. A cycle is
+marked seen only once it is known to assemble, so an invalid rotation cannot block a valid one, and the wrapper is
+removed before the records are built so every stored structure comes from the unmodified path. `code/` is untouched.
+
+| | published best-first 1000 | **unique-cycle 1000** |
+|---|---|---|
+| distinct walk strings | 1000 | 1000 |
+| distinct cycles of motifs | 751 | **1000** |
+| distinct clean molecules | 625 | **753** |
+| **Unique** | **62%** | **75%** |
+| Novel | 100% | 100% |
+| Diversity | 0.91 | 0.90 |
+| median heavy atoms | 16 | 19 |
+
+**It works, and it also sharpens item 4's story.** The search examined 2882 closures and skipped 602 as duplicate
+cycles (1280 were invalid for other reasons, as before). It finds **147 molecules the published 1000 missed** and
+loses 19 it had found — the frontier moves, so a few low-probability structures fall off the end of the list. And
+because the budget is no longer spent on rotations, 1000 unique-cycle walks yield **753 distinct molecules, the same
+count the raw 1400-walk enumeration needed 1400 walks to reach (752)**. That is a 1.4× efficiency gain stated as a
+number, and it is the same point as your item 4: best-first with duplicate rejection explores the design space
+systematically rather than re-deriving what it has already seen.
+
+**I verified the change is a filter and nothing else** before running it at scale: at n = 250 the output is exactly
+the original enumeration with duplicate cycles dropped and order preserved, element by element, 21 skipped. So the
+75% is not a different search, it is the same search not wasting its budget.
+
+**What it does not fix, and you predicted this.** 1000 distinct cycles still give only 753 molecules, so 247
+collisions remain — different cycles, genuinely different motif pairs and attachment points, that assemble to the
+same repeat unit once unconsumed sites are capped. You said we could concede those; I would just note they are 25%
+rather than rare, so 75% is close to the ceiling for this grammar at depth 2 (993 of the walks are two motifs long).
+
+**One caveat before we put 75% in Table 1, and it is the only real objection.** Every generation baseline in Table
+S14 computes Unique over raw samples with no deduplication of any kind. Rejecting duplicates inside the search
+makes our column stricter in one sense — each accepted walk is a distinct cycle — but it is also a protocol the
+baselines were not given, so **75% must not be read against Graph GA's 91% as like-for-like**. If you adopt it, the
+honest presentation is to report it as a protocol improvement with one sentence saying the baselines are scored
+without it, and to keep the 62% figure in the SI so the comparison that Table S14 actually makes stays intact.
+
+**Status:** the structures, the metrics above and a fresh Retro\* pass on the new set are running/ready, so the
+number is available to adopt. **I have not changed Table 1 or Table S14** — Unique is a submitted number, and
+swapping it also moves median heavy atoms 16 → 19 and the Retro\* correlation with it. It is **decision 6 in §5**.
 
 ---
 
@@ -364,9 +416,10 @@ films are 5.8–7.4 kDa.
 2. **The published-paper conflict in §2.1.** Options: say nothing (risky), add a footnote that the dataset was
    corrected and baselines re-tuned, or state it plainly in the baseline table's caption. I lean to the footnote.
 3. ~~**Item 4:** report 62% with the explanatory sentence, or spend the hours on a deduped 1000?~~
-   **Withdrawn — answered by measurement (§3).** A deduped 1000 does not exist at a sensible price (1400 walks give
-   752 molecules, and the rate is falling), and the explanatory sentences are in the installed main text. Nothing
-   needed from you unless you want them removed.
+   **Withdrawn, then reopened as decision 6 — and my reason for withdrawing it was wrong.** I said a deduped 1000
+   did not exist at a sensible price, which was true only of deduplicating the *output*. Deduplicating inside the
+   *search*, which is your item 3, gives 753 distinct molecules from 1000 walks in one 8-hour run (§3a). The
+   explanatory sentences are in the installed main text either way.
 4. **The two synthesizability claims in §5a.** "very likely to be synthetically accessible" and "enables some
    aspect of innate synthesizability" are both undercut by the dataset scoring 9% on the metric we score 54% on. I
    would rewrite the first to say the structures are *built from motifs that appear in synthesized polymers*, which
@@ -426,6 +479,17 @@ films are 5.8–7.4 kDa.
    **One thing I checked and am leaving alone.** The abstract says "three novel structures" while Tables S2/S4, the
    GPC line and Figure 5 all carry four. The abstract is right: PIM-PI-4 is the previously reported polymer, which
    is also row PIM-PI-1 of the dataset (§2.5). No change needed.
+6. **Do we adopt the unique-cycle enumeration in Table 1? (§3a, new.)** Your item 3 raised Unique from 62% to 75%
+   by rejecting duplicate cycles during the search, and the run is done. Adopting it swaps four numbers — Unique
+   62→75%, Diversity 0.91→0.90, median heavy atoms 16→19, and Retro\* from the fresh pass — and moves our point in
+   the Retro\*-vs-size correlation, so Table 1, Table S14, the caption and the main-text sentence all rebuild
+   together. **For:** it is a better method, it is the method the paper describes itself as having (systematic
+   exploration), and 1000 walks now reach the molecule count that previously took 1400. **Against:** Unique is a
+   submitted number, and the baselines in Table S14 are scored without any deduplication, so the column stops
+   being like-for-like and needs one sentence of explanation. My recommendation: **adopt it**, with that sentence,
+   and keep the 62% in the SI as the no-deduplication figure. It is the one item in this briefing where a
+   submitted number moves *in our favour* for a defensible reason, but it is still a submitted number, so I have
+   not touched it.
 
 ---
 
@@ -845,15 +909,16 @@ and I am recommending none of the eight arms for the paper.
 | Predictor campaign | **complete, now 1554 runs over 29 arms.** `campaign/RECOMMENDATION.md`, `RESULTS.md`, `STATUS.md`. The three arms I had listed here as "still running" had never run; I relaunched them and they finished in 95 minutes — results and one correction to myself in **§6b**. The earlier `test_idx.txt` corruption I flagged was verified and fixed on their side; one paragraph of their analysis was withdrawn and redone, no conclusion changed. |
 | `huber` δ = 1.0 / 0.5 / 0.2, and `log` + δ = 0.5 | **done, 240 runs.** The flag had been dead — `loss_func` was reassigned to `MSELoss` below the patch, so no `huber` arm the campaign ever reported used Huber loss (§6b). Fixed, verified, invalid rows deleted, all three deltas plus the combination re-run. δ = 0.5 is a real effect and the combination removes the last negative-R² cell; see §6b. **No compute is queued.** |
 | Representation arms (your item 1), 480 runs | **done** — pretrained polyBERT and ChemBERTa embeddings lose to the fingerprint at t ≈ 4–5; a 99-way identity indicator *matches* it on MAE; and a whole-monomer fingerprint channel is within noise of both `base` and `huber05`. The node features are a constant-per-polymer embedding table, so there is nothing for an encoder to add (§6c). Negative result with a mechanism; nothing recommended for the paper. |
-| Unique-cycle generation (your item 3), n = 1000 | **running**, ~8 h. `gen_unique.py` wraps `verify_walk` so a closed walk whose canonical cycle has already been accepted is rejected, which stops `L22→S32→L22` and `S32→L22→S32` from both counting. Verified exact at n = 250: the output is the original enumeration with duplicate cycles dropped, order preserved, 21 skipped. Expected Unique ≈ 83% against the published 62%. |
-| Item 4 reframing (Retro\* as search order) | **written into `apply_main.py` and `apply_si.py`, not yet built.** It installs with the next document rebuild, which is waiting on the generation run above so Table 1's Unique, Table S14 and the Retro\* correlation all refresh in one pass. |
+| Unique-cycle generation (your item 3), n = 1000 | **done** (8.1 h) — Unique **62% → 75%** (753 distinct molecules from 1000 walks, against 625). `gen_unique.py` wraps `verify_walk` so a closed walk whose canonical cycle has already been accepted is rejected, which stops `L22→S32→L22` and `S32→L22→S32` from both counting; 602 duplicate cycles skipped of 2882 closures. Verified exact at n = 250 against the original enumeration. My 83% estimate was too high — the remaining 25% is distinct cycles that assemble to the same molecule. §3a, and decision 6 in §5. |
+| Item 4 reframing (Retro\* as search order) | **done and installed, 19:23.** Both documents rebuilt with "All validations PASSED!". The Retro\* passage in the main text and the Table S14 caption now say that best-first expands the most probable walks first, that those are the short ones, and that examining the simplest candidates first is the intended order for systematic exploration — while keeping the size caveat, so the column is not read as evidence of inherent accessibility. It changes no number, so it installed independently of decision 6. |
 | Chemprop D-MPNN, 72 runs | **done** — 0.487 / 0.559 over the six properties, behind us on both (§1); in Table S12 |
 | Chemprop D-MPNN at ten seeds, 240 runs | **done** — 0.498 / 0.445, still behind us (0.461 / 0.342), so the end-to-end clause in the main text is true under both protocols and decision 0 is safe (§6a) |
 | Chemprop D-MPNN, raw-target control, 36 runs | **done** — 0.512 / 0.570, also behind us, so the end-to-end claim holds in both tables |
 | HM-GNN and HM-GNN (+expert) | **done** — 12 rows, write-up in `baselines/HMGNN.md`. We beat it (see §1). It also turned up a real bug in the upstream loader: node labels were read as `int(i[-2])`, the second-to-last character, so any atom label ≥ 10 was truncated and sulfur (16) was being read as carbon (6). |
 | Generation baselines | **all 13 rows done** (see §5a). DEG landed and I ran a third Retro* pass for it myself, since the finisher's second pass ran before DEG had sampled and a DEG row without Retro* would be a hole — Retro* is DEG's own published reward. JT-VAE finished at 06:42 and is now in the table: 100% valid, 22% unique, 92% novel, diversity 0.72, Retro* 20% on 25 of its 1000 samples, median 57 heavy atoms. It is the one off-trend point in the size-vs-Retro* relation (see §5a). |
-| `gen.py bestfirst 1400` | **done** (8.6 h) — and it settles item 4 against the deduped-1000 route: 752 distinct molecules, so Unique falls to 54% (§3). Its first 1000 reproduce `bestfirst_n1000` exactly, which is also a determinism check on the enumeration. |
+| `gen.py bestfirst 1400` | **done** (8.6 h) — 752 distinct molecules, so enumerating deeper *lowers* Unique to 54% (§3). Its first 1000 reproduce `bestfirst_n1000` exactly, a determinism check on the enumeration. It ruled out deduplicating the output; it did not rule out deduplicating the search, which is what §3a does. |
 | JT-VAE → Table S14 | **done and installed, 06:46.** Retro\* pass 4 ran, archived to `retro/run4/`, `bl_gen_si.py` reran, both documents rebuilt with "All validations PASSED" and installed. Table S14 now reports 13 rows with `not yet available: []`, and the generated caption and main-text sentence both carry r = −0.80 (n = 12). **Nothing in the generation half of the paper is now waiting on compute.** |
+| Retro\* pass on the unique-cycle set, 1000 structures | **running** — `repro_v1/retro.py`, 24 workers, into `outputs/retro/unique_clean_retro.txt`. It is the last number decision 6 needs; the other three are computed (§3a). |
 
 ---
 

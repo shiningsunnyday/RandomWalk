@@ -193,6 +193,21 @@ assertion checks that the accepted walks have pairwise-distinct cycles. `code/` 
 n = 250: the output is the original `bestfirst` enumeration with duplicate cycles dropped and order preserved
 (element-by-element, 21 skipped).
 
+At n = 1000 (8.1 h): 1000 distinct cycles, **753 distinct clean molecules — Unique 75%** against the published
+62%, novel 100%, diversity 0.90, median 19 heavy atoms; 602 duplicate cycles skipped of 2882 closures examined,
+1280 invalid. 147 molecules the published 1000 missed, 19 it found and this does not. `uniqueness.py` recomputes
+all of it into `outputs/gen/uniqueness.json` under the `unique` key. Retro\* on the new set:
+
+```bash
+awk '{print $1}' outputs/gen/unique_n1000_clean.txt > outputs/gen/unique_n1000_clean_smiles.txt
+~/miniconda3/envs/retro_star_env/bin/python repro_v1/retro.py \
+  results_v2/outputs/gen/unique_n1000_clean_smiles.txt results_v2/outputs/retro/unique_clean_retro.txt 24
+```
+
+**None of this is in the submitted documents.** Table 1 still reports the published 62% from
+`bestfirst_n1000_clean.txt`; adopting the unique-cycle set is decision 6 in `BRIEFING_2.md` §5, and it would move
+Unique, diversity, median heavy atoms and the Retro\* correlation together.
+
 ## 6. Prediction baselines (`baselines/`)
 
 Added after the first revision, for the reviewers' request for competitive comparisons. Every baseline runs under
