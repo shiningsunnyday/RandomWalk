@@ -319,6 +319,7 @@ removed before the records are built so every stored structure comes from the un
 | Novel | 100% | 100% |
 | Diversity | 0.91 | 0.90 |
 | median heavy atoms | 16 | 19 |
+| Retro\* | 53.9% | **54.5%** |
 
 **It works, and it also sharpens item 4's story.** The search examined 2882 closures and skipped 602 as duplicate
 cycles (1280 were invalid for other reasons, as before). It finds **147 molecules the published 1000 missed** and
@@ -344,8 +345,15 @@ baselines were not given, so **75% must not be read against Graph GA's 91% as li
 honest presentation is to report it as a protocol improvement with one sentence saying the baselines are scored
 without it, and to keep the 62% figure in the SI so the comparison that Table S14 actually makes stays intact.
 
-**Status:** the structures, the metrics above and a fresh Retro\* pass on the new set are running/ready, so the
-number is available to adopt. **I have not changed Table 1 or Table S14** — Unique is a submitted number, and
+**The Retro\* pass is done, and it held: 54.5% against 53.9%.** That is worth a sentence of its own, because the
+correlation in §5a would have predicted a fall — the new set's median monomer is 19 heavy atoms rather than 16, and
+Retro\* success drops with size across the Table S14 rows at r = −0.80. It did not fall. One point is not evidence
+against the correlation, but it does mean adopting the unique-cycle set costs us nothing on the synthesizability
+column while gaining 13 points of uniqueness, and our row moves slightly *off* the size trend rather than along it.
+
+**Status: every number decision 6 needs is now computed.** The full row would read Valid 90% (unchanged — validity
+comes from the random-sampling counters, not the best-first set), Unique 75%, Novel 100%, Diversity 0.90,
+Retro\* 54%, median 19 heavy atoms. **I have not changed Table 1 or Table S14** — Unique is a submitted number, and
 swapping it also moves median heavy atoms 16 → 19 and the Retro\* correlation with it. It is **decision 6 in §5**.
 
 ---
@@ -480,10 +488,9 @@ films are 5.8–7.4 kDa.
    GPC line and Figure 5 all carry four. The abstract is right: PIM-PI-4 is the previously reported polymer, which
    is also row PIM-PI-1 of the dataset (§2.5). No change needed.
 6. **Do we adopt the unique-cycle enumeration in Table 1? (§3a, new.)** Your item 3 raised Unique from 62% to 75%
-   by rejecting duplicate cycles during the search, and the run is done. Adopting it swaps four numbers — Unique
-   62→75%, Diversity 0.91→0.90, median heavy atoms 16→19, and Retro\* from the fresh pass — and moves our point in
-   the Retro\*-vs-size correlation, so Table 1, Table S14, the caption and the main-text sentence all rebuild
-   together. **For:** it is a better method, it is the method the paper describes itself as having (systematic
+   by rejecting duplicate cycles during the search, and the run is done. Adopting it swaps three numbers and leaves a fourth
+   alone — Unique 62→75%, Diversity 0.91→0.90, median heavy atoms 16→19, and Retro\* 54% either way — so Table 1,
+   Table S14, the caption and the main-text correlation all rebuild together. **For:** it is a better method, it is the method the paper describes itself as having (systematic
    exploration), and 1000 walks now reach the molecule count that previously took 1400. **Against:** Unique is a
    submitted number, and the baselines in Table S14 are scored without any deduplication, so the column stops
    being like-for-like and needs one sentence of explanation. My recommendation: **adopt it**, with that sentence,
@@ -918,7 +925,7 @@ and I am recommending none of the eight arms for the paper.
 | Generation baselines | **all 13 rows done** (see §5a). DEG landed and I ran a third Retro* pass for it myself, since the finisher's second pass ran before DEG had sampled and a DEG row without Retro* would be a hole — Retro* is DEG's own published reward. JT-VAE finished at 06:42 and is now in the table: 100% valid, 22% unique, 92% novel, diversity 0.72, Retro* 20% on 25 of its 1000 samples, median 57 heavy atoms. It is the one off-trend point in the size-vs-Retro* relation (see §5a). |
 | `gen.py bestfirst 1400` | **done** (8.6 h) — 752 distinct molecules, so enumerating deeper *lowers* Unique to 54% (§3). Its first 1000 reproduce `bestfirst_n1000` exactly, a determinism check on the enumeration. It ruled out deduplicating the output; it did not rule out deduplicating the search, which is what §3a does. |
 | JT-VAE → Table S14 | **done and installed, 06:46.** Retro\* pass 4 ran, archived to `retro/run4/`, `bl_gen_si.py` reran, both documents rebuilt with "All validations PASSED" and installed. Table S14 now reports 13 rows with `not yet available: []`, and the generated caption and main-text sentence both carry r = −0.80 (n = 12). **Nothing in the generation half of the paper is now waiting on compute.** |
-| Retro\* pass on the unique-cycle set, 1000 structures | **running** — `repro_v1/retro.py`, 24 workers, into `outputs/retro/unique_clean_retro.txt`. It is the last number decision 6 needs; the other three are computed (§3a). |
+| Retro\* pass on the unique-cycle set, 1000 structures | **done** (18 min, 24 workers) — **545/1000 = 54.5%** against the published 539/1000 = 53.9%, so the column does not move even though the median monomer grew from 16 to 19 heavy atoms. Decision 6 now has every number it needs. **No compute is queued.** |
 
 ---
 

@@ -194,7 +194,8 @@ n = 250: the output is the original `bestfirst` enumeration with duplicate cycle
 (element-by-element, 21 skipped).
 
 At n = 1000 (8.1 h): 1000 distinct cycles, **753 distinct clean molecules — Unique 75%** against the published
-62%, novel 100%, diversity 0.90, median 19 heavy atoms; 602 duplicate cycles skipped of 2882 closures examined,
+62%, novel 100%, diversity 0.90, median 19 heavy atoms, Retro\* 545/1000 = 54.5% (published set: 539/1000 = 53.9%, so
+the column is unchanged despite the larger median); 602 duplicate cycles skipped of 2882 closures examined,
 1280 invalid. 147 molecules the published 1000 missed, 19 it found and this does not. `uniqueness.py` recomputes
 all of it into `outputs/gen/uniqueness.json` under the `unique` key. Retro\* on the new set:
 
