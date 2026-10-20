@@ -111,7 +111,7 @@ bash results_v2/build_docx.sh [out_dir]      # unpack -> merge_runs -> apply_mai
 
 ## 5b. Predictor campaign (`campaign/`)
 
-768 runs over 15 arms, K = 10 split seeds, arm chosen on validation Spearman alone; deliverables in
+1434 runs over 27 arms, K = 10 split seeds, arm chosen on validation Spearman alone; deliverables in
 `campaign/{PLAN,RESULTS,RECOMMENDATION,STATUS}.md`, per-run index in `campaign/outputs/campaign_runs.csv`.
 Nothing in `campaign/` is used by the submitted documents except the paired directed-vs-undirected statistic in the
 Methods ablation sentence, which `compute_numbers.py` recomputes from `campaign/outputs/campaign_runs.csv`.
@@ -130,6 +130,50 @@ to `base` (paired ΔR² = 0.000 over 60 runs at each of δ = 1.0, 0.5, 0.2). The
 assignment, the invalid arms were deleted from `campaign/outputs/`, and the deltas were re-run. No other arm is
 affected, because every other arm wanted MSELoss and received it, and nothing in the submitted documents is derived
 from a `huber` arm.
+
+## 5c. Motif-feature arms (`campaign/motif_emb.py`)
+
+Six arms, 360 runs, testing pretrained per-motif embeddings against the 2048-bit Morgan fingerprint the predictor
+ships with. Embeddings are written one `.npy` per motif, in `main.py`'s index order, and loaded with
+`--mol_feat dir --mol_feat_dir <dir>`; `--mol_feat fp dir` concatenates. Two steps, because the `llamole` env has
+`transformers` but not `sklearn`, which `utils.graph` imports:
+
+```bash
+cd results_v2/campaign
+PYTHONPATH=$STUBS ~/miniconda3/envs/polymer_walk/bin/python motif_emb.py --smiles   # -> outputs/motif_emb/motif_smiles.txt
+~/miniconda3/envs/llamole/bin/python motif_emb.py                                   # -> outputs/motif_emb/{polybert,chemberta}/<i>.npy
+```
+
+polyBERT is `xushijie/polyBERT` (600-d), ChemBERTa is `DeepChem/ChemBERTa-77M-MTR` (384-d), both mean-pooled over
+the final hidden state. Atom map numbers are stripped before embedding so the comparison against `mol2fp` is
+like-for-like. The `*_std` variants standardise per dimension and rescale to the fingerprints' measured mean L2
+norm of 3.64, which removes a scale confound worth about a fifth of the gap. `onehot` is `--mol_feat one_hot`, a
+99-way identity indicator with no chemistry, and is the diagnostic: it matches the fingerprint on MAE
+(ΔMAE +0.028, t = 1.41 over 60 paired cells), so the node-feature channel is saturated by identity alone. All six
+arms lose to `base`; none is used by the submitted documents.
+
+## 5d. Literature-vs-lab calibration (`exp_calibrate.py`)
+
+`~/miniconda3/envs/polymer_walk/bin/python exp_calibrate.py` → `outputs/calibration.{json,md}`. One factor per
+property, `c = literature / our measurement`, computed on the reference polymer alone (our `PIM-PI-4`, which is
+dataset row `PIM-PI-1`); calibrated prediction = prediction / c, evaluated on the three novel polymers
+(`PIM-PI-1/2/3` in our numbering), which contribute nothing to `c`. "Within error" means
+`|pred − obs| ≤ err + sd`, with `err` the measurement uncertainty and `sd` the ensemble spread, as elsewhere in the
+paper. H₂ calibrates to a geometric-mean ratio of 1.00 (0/3 → 3/3 within error); O₂ and CO₂ overcorrect and the
+selectivities get worse. **Nothing in the submitted documents is calibrated** — the factor rests on n = 1 and, for
+O₂ and CO₂, on a polymer whose literature labels were in training.
+
+## 5e. Unique-cycle generation (`gen_unique.py`)
+
+`PYTHONPATH=$STUBS ~/miniconda3/envs/polymer_walk/bin/python gen_unique.py <n> [seed]` →
+`outputs/gen/unique_n<n>.{json,_trajs.pkl,_stats.json}`. Best-first enumeration as in `code/`, with
+`diffusion.verify_walk` wrapped so that a closed walk whose canonical cycle (canonical over rotation and
+reflection, as `uniqueness.py` computes it) has already been accepted raises and is treated as an invalid walk.
+A cycle is marked seen only once it is known to assemble, so an invalid rotation cannot block a valid one. The
+wrapper is removed before the records are built, so every stored record comes from the unmodified path, and an
+assertion checks that the accepted walks have pairwise-distinct cycles. `code/` is not modified. Verified exact at
+n = 250: the output is the original `bestfirst` enumeration with duplicate cycles dropped and order preserved
+(element-by-element, 21 skipped).
 
 ## 6. Prediction baselines (`baselines/`)
 

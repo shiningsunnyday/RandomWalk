@@ -182,6 +182,67 @@ camera-ready PDF on this machine, so please sanity-check the first item against 
 
 ---
 
+## 2a. Your item 2: calibrating on the overlapping polymer fixes H₂ completely, and the rest overcorrects
+
+`results_v2/exp_calibrate.py` → `outputs/calibration.{json,md}`. One factor per property,
+`c = literature / our measurement` on the reference polymer **alone** (our PIM-PI-4 = dataset row `PIM-PI-1`);
+calibrated prediction = prediction / c. The three novel polymers contribute nothing to the factor, so this is a
+genuine out-of-sample test of the idea, not a fit.
+
+| property | c (lit / lab on the reference) | geomean pred/obs, raw | **calibrated** | calibrated range | within error |
+|---|---|---|---|---|---|
+| **H₂** | 2.41× | 2.41 | **1.00** | 0.88–1.09 | 0/3 → **3/3** |
+| O₂ | 3.75× | 2.21 | 0.59 | 0.35–1.10 | 1/3 → 1/3 |
+| CO₂ | 4.85× | 1.92 | 0.40 | 0.26–0.65 | 1/3 → 0/3 |
+| H₂/N₂ | 0.49× | 1.45 | 2.93 | 2.71–3.10 | 1/3 → 0/3 |
+| O₂/N₂ | 0.78× | 1.29 | 1.66 | 1.61–1.69 | 1/3 → 0/3 |
+| CO₂/CH₄ | 0.78× | 1.02 | 1.30 | 1.08–1.50 | 2/3 → 1/3 |
+
+**For H₂ the answer to your question is an unqualified yes.** The systematic bias is not merely mitigated, it is
+removed: a factor derived from one polymer, never shown the other three, drives the geometric-mean ratio from 2.41
+to **1.00** and brings **all three** novel polymers inside combined experimental error, from none of them. That is
+the strongest single piece of evidence we have that the literature-versus-our-lab discrepancy is a multiplicative
+protocol offset rather than model error, because it was predicted on one polymer and then held on three others.
+
+**For O₂ and CO₂ it overcorrects, and the pattern is informative rather than embarrassing.** The reference's own
+offset (3.75×, 4.85×) is larger than the offset the novel polymers show (2.21×, 1.92×), so dividing by it pushes
+the predictions below the measurements (0.59, 0.40). Two readings, and they are not exclusive: the reference
+polymer's offset is partly real film-to-film variation in condensable-gas permeability, and partly an artefact of
+the one disclosure in §2.5 — its literature labels for O₂ and CO₂ were **in the model's training set**, so for
+those gases the "prediction" is closer to a recalled label and `c` is correspondingly inflated. H₂ is the gas where
+the offset is cleanest and it is also the gas that calibrates perfectly.
+
+**Selectivities get worse, which supports an argument the paper already makes.** On the reference, measured
+selectivity *exceeds* the literature value (c = 0.49–0.78, i.e. below 1), so calibration pushes selectivity
+predictions up — and they were the quantities that were already right (raw geomean 1.24, 4/9 within error).
+Calibrating them takes us to 1.85 and 1/9. The reason is the paper's own: a selectivity is a ratio of two
+permeabilities measured on the same film, so the protocol offset largely cancels before any calibration, and
+applying a permeability-derived correction to it double-counts.
+
+Aggregate, over the three novel polymers only:
+
+| | geomean ratio | mean &#124;log₁₀ ratio&#124; | within error |
+|---|---|---|---|
+| permeability, raw | 2.17 | 0.336 | 2/9 |
+| permeability, **calibrated** | 0.62 | **0.233** | **4/9** |
+| selectivity, raw | 1.24 | **0.110** | **4/9** |
+| selectivity, calibrated | 1.85 | 0.267 | 1/9 |
+
+So calibration helps permeabilities (absolute log error 0.336 → 0.233, agreement 2/9 → 4/9) and hurts
+selectivities, netting out at no overall improvement if you score all six properties together.
+
+**Recommendation — and I have not applied any of it.** Do **not** recalibrate the screening numbers in the paper:
+the factor rests on n = 1, it has no error bar, and for two of the three gases it is contaminated by the training-set
+overlap, so a reviewer could fairly call a globally calibrated table circular. Do use the H₂ result as an argument,
+in two or three sentences in the Polymer Membrane Testing discussion: a factor fixed on the one previously reported
+polymer brings all three novel polymers' H₂ permeabilities inside experimental error, while the selectivities need
+no correction at all because the ratio cancels the offset. That is the protocol-offset explanation demonstrated
+rather than asserted, it costs no change to any existing number, and it pairs naturally with the §2.5 disclosure —
+which it also strengthens the case for making, since the argument requires admitting that the reference polymer is
+in the dataset.
+
+---
+
 ## 3. Item 4 is settled: the 62% is bookkeeping, and no rerun can raise it
 
 You asked me to re-run with the `if is_novel(seen_dags, root)` check, "unless you have evidence to the contrary".
@@ -696,12 +757,65 @@ evidence that the MAE and the R² wins come from different changes and may not h
 
 ---
 
+## 6c. Your item 1: pretrained motif embeddings lose, and the diagnostic says why
+
+You asked me to try pretrained embeddings per group in place of the 2048-bit fingerprint, and not to concede until
+the options were exhausted. Six new arms, 360 runs, same ten splits and the same validation-only selection as
+everywhere else. `campaign/motif_emb.py` writes one `.npy` per motif; `--mol_feat dir` loads them.
+
+| arm, K = 10 | motif feature | MAE ↓ | R² ↑ | V ↓ | paired ΔMAE vs `base` |
+|---|---|---|---|---|---|
+| `base` | 2048-bit Morgan fingerprint | **0.461** | 0.342 | 0.525 | — |
+| `onehot` | **motif identity only, no chemistry** | 0.488 | 0.133 | 0.916 | +0.028 (t = 1.41) |
+| `emb_concat` | fingerprint ⊕ polyBERT (2648-d) | 0.476 | 0.207 | 0.815 | +0.015 (t = 1.01) |
+| `emb_polybert_std` | polyBERT 600-d, rescaled | 0.536 | 0.108 | 0.782 | +0.075 (t = 3.85) |
+| `emb_polybert` | polyBERT 600-d, raw | 0.557 | 0.071 | 0.708 | +0.096 (t = 4.50) |
+| `emb_chemberta_std` | ChemBERTa 384-d, rescaled | 0.565 | −0.035 | 0.790 | +0.105 (t = 4.40) |
+| `emb_chemberta` | ChemBERTa 384-d, raw | 0.606 | −0.033 | 0.953 | +0.146 (t = 5.09) |
+
+**Substituting a pretrained encoder for the fingerprint makes the predictor worse, by a margin that is not close.**
+Both models lose at t ≈ 4–5 on 60 paired cells. I checked the obvious confound first: the embeddings arrive with a
+much larger norm than a sparse bit vector, so I standardised each dimension and rescaled to the fingerprints'
+measured mean L2 norm of 3.64. That recovered about a fifth of the gap for each model — real, so the confound
+existed — and left both still clearly behind. Concatenating rather than substituting (`emb_concat`) cannot lose
+information and indeed lands within noise of `base`, which is the signature of an input the network learns to
+ignore.
+
+**The diagnostic is the `onehot` row, and it is the actual finding: motif identity alone matches the fingerprint.**
+Replacing all 2048 bits with a 99-dimensional indicator — no substructures, no chemistry, nothing an encoder could
+pretrain on — costs **+0.028 MAE at t = 1.41, which does not clear significance** on the metric we rank by. (It is
+worse on R², ΔR² −0.209 at t = −2.10, and worse on V; I am not hiding that, but R² is the metric §6a showed to be
+the unstable one, and both the ranking criterion and the paper's comparisons are MAE.) So on the ranking metric the
+fingerprint's chemical content is nearly inert, and what the predictor is actually consuming from a node is *which
+motif it is*. With 99 motifs and 242 polymers that is unsurprising in hindsight — identity is cheap to memorise and
+the structural signal lives in the walk, not in the node.
+
+That explains all six rows in one line, and it is why this avenue is genuinely closed rather than merely
+unsuccessful: if the node-feature channel is saturated by a 99-way indicator, **no motif encoder, however good, has
+room to help** — a better description of a motif cannot beat already knowing exactly which one it is. The
+embeddings do worse than the indicator because they spread that identity across a dense 600-d space the model has
+to invert from 242 examples.
+
+**What this implies for making us more competitive.** The gap to the leading baselines is not a node-feature gap, so
+it will not close from this direction. polyBERT + ridge (0.412) and Bag-of-Motifs + expert (0.423) beat us while
+representing the *whole monomer* at once rather than encoding motifs better — they do not have to learn to
+aggregate over a walk from 242 examples. Of everything the campaign has tried, the two changes that actually move
+us are still the loss and the target (`huber05` 0.431, `strat_struct` 0.437, `log` 0.452 — §6b), and `huber05` now
+puts us within 0.019 MAE of polyBERT + ridge with no reporting caveat at all. I would spend the next effort on
+whole-monomer readout rather than on motif features, and I am not recommending any of the six arms above for the
+paper. The campaign stands at **1434 runs over 27 arms**; nothing from item 1 is queued.
+
+---
+
 ## 7. Still running
 
 | Job | State |
 |---|---|
-| Predictor campaign | **complete, now 1128 runs over 21 arms.** `campaign/RECOMMENDATION.md`, `RESULTS.md`, `STATUS.md`. The three arms I had listed here as "still running" had never run; I relaunched them and they finished in 95 minutes — results and one correction to myself in **§6b**. The earlier `test_idx.txt` corruption I flagged was verified and fixed on their side; one paragraph of their analysis was withdrawn and redone, no conclusion changed. |
+| Predictor campaign | **complete, now 1434 runs over 27 arms.** `campaign/RECOMMENDATION.md`, `RESULTS.md`, `STATUS.md`. The three arms I had listed here as "still running" had never run; I relaunched them and they finished in 95 minutes — results and one correction to myself in **§6b**. The earlier `test_idx.txt` corruption I flagged was verified and fixed on their side; one paragraph of their analysis was withdrawn and redone, no conclusion changed. |
 | `huber` δ = 1.0 / 0.5 / 0.2, and `log` + δ = 0.5 | **done, 240 runs.** The flag had been dead — `loss_func` was reassigned to `MSELoss` below the patch, so no `huber` arm the campaign ever reported used Huber loss (§6b). Fixed, verified, invalid rows deleted, all three deltas plus the combination re-run. δ = 0.5 is a real effect and the combination removes the last negative-R² cell; see §6b. **No compute is queued.** |
+| Motif-feature arms (your item 1), 360 runs | **done** — pretrained polyBERT and ChemBERTa embeddings both lose to the fingerprint at t ≈ 4–5, concatenation lands within noise, and a 99-way identity indicator *matches* the fingerprint on MAE, which says the node-feature channel is saturated (§6c). Negative result with a mechanism; nothing recommended for the paper. |
+| Unique-cycle generation (your item 3), n = 1000 | **running**, ~8 h. `gen_unique.py` wraps `verify_walk` so a closed walk whose canonical cycle has already been accepted is rejected, which stops `L22→S32→L22` and `S32→L22→S32` from both counting. Verified exact at n = 250: the output is the original enumeration with duplicate cycles dropped, order preserved, 21 skipped. Expected Unique ≈ 83% against the published 62%. |
+| Item 4 reframing (Retro\* as search order) | **written into `apply_main.py` and `apply_si.py`, not yet built.** It installs with the next document rebuild, which is waiting on the generation run above so Table 1's Unique, Table S14 and the Retro\* correlation all refresh in one pass. |
 | Chemprop D-MPNN, 72 runs | **done** — 0.487 / 0.559 over the six properties, behind us on both (§1); in Table S12 |
 | Chemprop D-MPNN at ten seeds, 240 runs | **done** — 0.498 / 0.445, still behind us (0.461 / 0.342), so the end-to-end clause in the main text is true under both protocols and decision 0 is safe (§6a) |
 | Chemprop D-MPNN, raw-target control, 36 runs | **done** — 0.512 / 0.570, also behind us, so the end-to-end claim holds in both tables |
