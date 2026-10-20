@@ -1534,15 +1534,14 @@ def attach_smiles(args, all_dags):
     if 'polymer_walks' in args.walks_file:
         assert hasattr(args, 'smiles_file')
         all_smiles = open(args.smiles_file).readlines()
-        if len(dag_ids) != len(all_smiles):
-            breakpoint()
+        assert len(dag_ids) == len(all_smiles), f'{len(dag_ids)} dags but {len(all_smiles)} smiles'
+        # CAMPAIGN PATCH: the zip below pairs dag ids with file lines positionally, so the dag ids have to be
+        # exactly the line numbers or every polymer silently gets another polymer's monomer fingerprint.
+        assert sorted(dag_ids) == list(range(len(all_smiles))), 'dag ids are not the smiles-file line numbers'
         polymer_smiles = {}
-        for i, l in zip(dag_ids, all_smiles):
-            if l == '\n':
-                smiles = ''
-            else:
-                smiles = l.split(',')[0]
-            polymer_smiles[i] = smiles
+        for i, l in zip(sorted(dag_ids), all_smiles):
+            l = l.strip()
+            polymer_smiles[i] = l.split()[0] if l else ''                                          # CAMPAIGN PATCH
     for i, l in enumerate(lines):        
         if i not in dag_ids: continue
         if 'permeability' in args.walks_file:

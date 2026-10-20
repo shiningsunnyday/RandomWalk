@@ -1428,6 +1428,10 @@ if __name__ == "__main__":
                                                                       'unimol', 
                                                                       'dir'])
     parser.add_argument('--concat_mol_feats', action='store_true')
+    parser.add_argument('--smiles_file', type=str)                                                 # CAMPAIGN PATCH
+    # --concat_mol_feats needs one whole-monomer SMILES per dag; bag_of_motifs.py took --smiles_file but main.py
+    # never declared it, so the flag asserted out here. attach_smiles now also parses the file's whitespace
+    # columns (<smiles> <name>) rather than splitting on a comma that is not in it.
     parser.add_argument('--mol_feat_dir', type=str)
     parser.add_argument('--feat_concat_W', action='store_true')
     parser.add_argument('--attn_W', action='store_true')
