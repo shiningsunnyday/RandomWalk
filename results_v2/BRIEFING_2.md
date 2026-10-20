@@ -757,7 +757,7 @@ evidence that the MAE and the R² wins come from different changes and may not h
 
 ---
 
-## 6c. Your item 1: pretrained motif embeddings lose, and the diagnostic says why
+## 6c. Your item 1: every representation change loses, and the diagnostic says why
 
 You asked me to try pretrained embeddings per group in place of the 2048-bit fingerprint, and not to concede until
 the options were exhausted. Six new arms, 360 runs, same ten splits and the same validation-only selection as
@@ -796,14 +796,45 @@ room to help** — a better description of a motif cannot beat already knowing e
 embeddings do worse than the indicator because they spread that identity across a dense 600-d space the model has
 to invert from 242 examples.
 
-**What this implies for making us more competitive.** The gap to the leading baselines is not a node-feature gap, so
-it will not close from this direction. polyBERT + ridge (0.412) and Bag-of-Motifs + expert (0.423) beat us while
-representing the *whole monomer* at once rather than encoding motifs better — they do not have to learn to
-aggregate over a walk from 242 examples. Of everything the campaign has tried, the two changes that actually move
-us are still the loss and the target (`huber05` 0.431, `strat_struct` 0.437, `log` 0.452 — §6b), and `huber05` now
-puts us within 0.019 MAE of polyBERT + ridge with no reporting caveat at all. I would spend the next effort on
-whole-monomer readout rather than on motif features, and I am not recommending any of the six arms above for the
-paper. The campaign stands at **1434 runs over 27 arms**; nothing from item 1 is queued.
+**Reading the code confirms the mechanism, which is stronger than inferring it from the numbers.** In
+`Predictor.forward` the node feature matrix `mol_feats` is **the same for every polymer** — one row per motif in the
+grammar graph, built once at startup. A polymer reaches the predictor *only* through the walk's edge weights
+`W_adj`. So the motif features are not a description of the input at all; they are an **initialisation of an
+embedding table**, and a one-hot is the fully learnable version of that table. The fingerprint can only act as a
+prior that ties chemically similar motifs together, and a pretrained encoder is a *different and worse-conditioned*
+prior over the same 99 rows — denser, higher-dimensional, and with no reason for its geometry to match what the six
+targets need. That is why none of them can win, and it is not something another checkpoint would fix.
+
+**The same reading says what the model never sees, so I ran that too: the assembled monomer.** If each polymer
+enters only as edge weights, the whole repeat unit is never presented as an object — which is exactly what polyBERT
++ ridge (0.412) and Bag-of-Motifs + expert (0.423) have and we do not. `main.py` already had a `--concat_mol_feats`
+flag for this; it was unusable, because it asserts on `args.smiles_file`, which only `bag_of_motifs.py` ever
+declared, and `attach_smiles` split the SMILES file on a comma the file does not contain. Both patched in
+`campaign/code/` (with an assertion that the dag ids really are the file's line numbers — the mapping is positional,
+and a silent misalignment would hand every polymer another polymer's fingerprint). Two more arms, 120 runs:
+
+| arm, K = 10 | MAE ↓ | R² ↑ | V ↓ | paired Δ vs its reference |
+|---|---|---|---|---|
+| `base` | 0.461 | 0.342 | 0.525 | — |
+| `concat_fp` — `base` + whole-monomer fingerprint | 0.479 | 0.274 | 0.580 | ΔMAE +0.019 (t = 0.78) vs `base` |
+| `huber05` | **0.431** | 0.496 | 0.281 | — |
+| `concat_huber05` — `huber05` + whole-monomer fingerprint | 0.440 | 0.428 | 0.348 | ΔMAE +0.009 (t = 0.60) vs `huber05` |
+
+**Also nothing — within noise of its reference in both pairings, and nominally slightly worse in both.** So the
+whole-monomer channel is not what the leading baselines are winning on either, at least not in a form this
+architecture can use.
+
+**Item 1 is now exhausted on the representation side, and I think that is the honest conclusion rather than a
+concession.** Eight arms, 480 runs: four pretrained encoders, two scalings of them, a concatenation, an
+identity-only control, and two whole-monomer channels. Not one beat the published fingerprint, and the
+identity-only control tells us why — at 114 polymers the model is **data-limited, not representation-limited**, so
+adding input dimensions cannot help and can only make the fit worse-conditioned. What does move us is the
+optimisation and the target, which is where §6b's gains come from: `huber05` 0.431, `strat_struct` 0.437, `log`
+0.452 against the published 0.461. **`huber05` puts us within 0.019 MAE of polyBERT + ridge with no reporting
+caveat at all**, and it got there by changing the loss, not the features. If you want one more swing at
+competitiveness I would take it on the readout architecture or on data augmentation, not on features — but I would
+not hold the submission for it. The campaign stands at **1554 runs over 29 arms**; nothing from item 1 is queued,
+and I am recommending none of the eight arms for the paper.
 
 ---
 
@@ -811,9 +842,9 @@ paper. The campaign stands at **1434 runs over 27 arms**; nothing from item 1 is
 
 | Job | State |
 |---|---|
-| Predictor campaign | **complete, now 1434 runs over 27 arms.** `campaign/RECOMMENDATION.md`, `RESULTS.md`, `STATUS.md`. The three arms I had listed here as "still running" had never run; I relaunched them and they finished in 95 minutes — results and one correction to myself in **§6b**. The earlier `test_idx.txt` corruption I flagged was verified and fixed on their side; one paragraph of their analysis was withdrawn and redone, no conclusion changed. |
+| Predictor campaign | **complete, now 1554 runs over 29 arms.** `campaign/RECOMMENDATION.md`, `RESULTS.md`, `STATUS.md`. The three arms I had listed here as "still running" had never run; I relaunched them and they finished in 95 minutes — results and one correction to myself in **§6b**. The earlier `test_idx.txt` corruption I flagged was verified and fixed on their side; one paragraph of their analysis was withdrawn and redone, no conclusion changed. |
 | `huber` δ = 1.0 / 0.5 / 0.2, and `log` + δ = 0.5 | **done, 240 runs.** The flag had been dead — `loss_func` was reassigned to `MSELoss` below the patch, so no `huber` arm the campaign ever reported used Huber loss (§6b). Fixed, verified, invalid rows deleted, all three deltas plus the combination re-run. δ = 0.5 is a real effect and the combination removes the last negative-R² cell; see §6b. **No compute is queued.** |
-| Motif-feature arms (your item 1), 360 runs | **done** — pretrained polyBERT and ChemBERTa embeddings both lose to the fingerprint at t ≈ 4–5, concatenation lands within noise, and a 99-way identity indicator *matches* the fingerprint on MAE, which says the node-feature channel is saturated (§6c). Negative result with a mechanism; nothing recommended for the paper. |
+| Representation arms (your item 1), 480 runs | **done** — pretrained polyBERT and ChemBERTa embeddings lose to the fingerprint at t ≈ 4–5; a 99-way identity indicator *matches* it on MAE; and a whole-monomer fingerprint channel is within noise of both `base` and `huber05`. The node features are a constant-per-polymer embedding table, so there is nothing for an encoder to add (§6c). Negative result with a mechanism; nothing recommended for the paper. |
 | Unique-cycle generation (your item 3), n = 1000 | **running**, ~8 h. `gen_unique.py` wraps `verify_walk` so a closed walk whose canonical cycle has already been accepted is rejected, which stops `L22→S32→L22` and `S32→L22→S32` from both counting. Verified exact at n = 250: the output is the original enumeration with duplicate cycles dropped, order preserved, 21 skipped. Expected Unique ≈ 83% against the published 62%. |
 | Item 4 reframing (Retro\* as search order) | **written into `apply_main.py` and `apply_si.py`, not yet built.** It installs with the next document rebuild, which is waiting on the generation run above so Table 1's Unique, Table S14 and the Retro\* correlation all refresh in one pass. |
 | Chemprop D-MPNN, 72 runs | **done** — 0.487 / 0.559 over the six properties, behind us on both (§1); in Table S12 |

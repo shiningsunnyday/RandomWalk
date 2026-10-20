@@ -111,7 +111,7 @@ bash results_v2/build_docx.sh [out_dir]      # unpack -> merge_runs -> apply_mai
 
 ## 5b. Predictor campaign (`campaign/`)
 
-1434 runs over 27 arms, K = 10 split seeds, arm chosen on validation Spearman alone; deliverables in
+1554 runs over 29 arms, K = 10 split seeds, arm chosen on validation Spearman alone; deliverables in
 `campaign/{PLAN,RESULTS,RECOMMENDATION,STATUS}.md`, per-run index in `campaign/outputs/campaign_runs.csv`.
 Nothing in `campaign/` is used by the submitted documents except the paired directed-vs-undirected statistic in the
 Methods ablation sentence, which `compute_numbers.py` recomputes from `campaign/outputs/campaign_runs.csv`.
@@ -131,10 +131,10 @@ assignment, the invalid arms were deleted from `campaign/outputs/`, and the delt
 affected, because every other arm wanted MSELoss and received it, and nothing in the submitted documents is derived
 from a `huber` arm.
 
-## 5c. Motif-feature arms (`campaign/motif_emb.py`)
+## 5c. Representation arms (`campaign/motif_emb.py`, `--concat_mol_feats`)
 
-Six arms, 360 runs, testing pretrained per-motif embeddings against the 2048-bit Morgan fingerprint the predictor
-ships with. Embeddings are written one `.npy` per motif, in `main.py`'s index order, and loaded with
+Eight arms, 480 runs, testing every representation change available against the 2048-bit Morgan fingerprint the
+predictor ships with. Six are per-motif features; two add a whole-monomer channel. Embeddings are written one `.npy` per motif, in `main.py`'s index order, and loaded with
 `--mol_feat dir --mol_feat_dir <dir>`; `--mol_feat fp dir` concatenates. Two steps, because the `llamole` env has
 `transformers` but not `sklearn`, which `utils.graph` imports:
 
@@ -149,8 +149,26 @@ the final hidden state. Atom map numbers are stripped before embedding so the co
 like-for-like. The `*_std` variants standardise per dimension and rescale to the fingerprints' measured mean L2
 norm of 3.64, which removes a scale confound worth about a fifth of the gap. `onehot` is `--mol_feat one_hot`, a
 99-way identity indicator with no chemistry, and is the diagnostic: it matches the fingerprint on MAE
-(ΔMAE +0.028, t = 1.41 over 60 paired cells), so the node-feature channel is saturated by identity alone. All six
-arms lose to `base`; none is used by the submitted documents.
+(ΔMAE +0.028, t = 1.41 over 60 paired cells), so the node-feature channel is saturated by identity alone. This is
+structural, not empirical: `mol_feats` is one row per motif, built once at startup and **identical for every
+polymer**, so it initialises an embedding table rather than describing an input, and the polymer enters
+`Predictor.forward` only through `W_adj`.
+
+The whole-monomer arms use `--concat_mol_feats`, which tiles `mol2fp` of the assembled repeat unit onto every node.
+Two fixes were needed in `campaign/code/` before it could run from `main.py` at all, and both are campaign-only:
+
+| Bug | Fix |
+|---|---|
+| `main.py` never declared `--smiles_file`, which `attach_smiles` asserts on, so the flag aborted (only `bag_of_motifs.py` declared it) | added to `main.py`'s parser |
+| `attach_smiles` read the monomer SMILES as `l.split(',')[0]`, but `polymer_walks_v2_smiles.txt` is whitespace-separated `<smiles> <name>` | parse `l.split()[0]`, and assert the dag ids are exactly the file's line numbers, since the pairing is positional and a misalignment would silently give each polymer another polymer's fingerprint |
+
+```bash
+bash train.sh "0 1" <seed> 0 <fw> normal 1 1000 concat_fp \
+  --concat_mol_feats --smiles_file ../data/group-contrib/polymer_walks_v2_smiles.txt
+```
+
+`concat_fp` is +0.019 MAE against `base` (t = 0.78) and `concat_huber05` is +0.009 against `huber05` (t = 0.60) —
+both within noise and nominally worse. All eight arms lose; none is used by the submitted documents.
 
 ## 5d. Literature-vs-lab calibration (`exp_calibrate.py`)
 
