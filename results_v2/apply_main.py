@@ -405,7 +405,14 @@ if _C and 'conn' in _C:
                  f"and running the same message passing on the original per-motif fingerprint gives "
                  f"{_fp['mae']:.3f}. Against its own ablation the connection-aware model is better by "
                  f"{abs(_vn['dmae']):.3f} MAE (t = {abs(_vn['t']):.2f}), the largest paired effect we measure for "
-                 'any single change to the predictor.')
+                 'any single change to the predictor. ')
+    # Which model produced which numbers. The connection-aware model is what we recommend, but Table 2, the
+    # screening and the predictions for the synthesized polymers were all produced before it existed, with the
+    # configuration described above; saying so is cheaper than letting a reader assume otherwise.
+    _txt += ('Table 2, the screening of generated structures and the predictions compared with experiment were '
+             'produced with the configuration described in the preceding paragraph, which is the one used '
+             'throughout this work; the connection-aware variant is evaluated here under the identical protocol '
+             'and is the parameterization we recommend for subsequent use of this grammar.')
     # the pretraining strategy is a separate reference from the GIN architecture the paper already cites as (77);
     # the reference list is an auto-numbered Word list, so appending one paragraph to it yields (78)
     _ps = [q for q in body(t).findall(W + 'p')
