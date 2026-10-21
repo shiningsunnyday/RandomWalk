@@ -14,6 +14,8 @@ import numpy as np
 
 H = os.path.dirname(os.path.abspath(__file__))
 RV = os.path.dirname(H)
+sys.path.insert(0, RV)
+import gen_set as GSET                      # which generated set our row describes
 GEN = os.path.join(H, 'generation', 'metrics.jsonl')
 
 LABELS = [                                   # (metrics.jsonl name, table label); order is the table order
@@ -54,7 +56,7 @@ def main():
     from rdkit import Chem, RDLogger
     RDLogger.DisableLog('rdApp.*')
     ha = [Chem.MolFromSmiles(l.split(' ')[0]).GetNumHeavyAtoms()
-          for l in open(os.path.join(RV, 'outputs', 'gen', 'bestfirst_n1000_clean.txt')) if l.strip()]
+          for l in open(os.path.join(RV, 'outputs', GSET.CLEAN)) if l.strip()]
     ours['median_heavy_atoms'] = float(np.median(ha))
 
     table, pts, missing = [], [], []

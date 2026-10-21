@@ -16,6 +16,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 H = os.path.dirname(os.path.abspath(__file__))
 O = os.path.join(H, 'outputs'); F = os.path.join(O, 'figs'); os.makedirs(F, exist_ok=True)
+import gen_set as GEN                       # which generated set the screening figures show
 GAS = {'H2': ('H2/N2', 9.765e4, -1.4841, (500, 10)), 'O2': ('O2/N2', 1.396e6, -5.666, (100, 2)),
        'CO2': ('CO2/CH4', 5.369e6, -2.636, (1000, 5))}
 COL = {'H2': 0, 'N2': 1, 'O2': 2, 'CH4': 3, 'CO2': 4}
@@ -50,9 +51,9 @@ def upper_bound(ax, k, n, xlim):
 
 
 def screening_figures():
-    gen = load_ens(os.path.join(O, 's9_ensemble.txt'))
+    gen = load_ens(os.path.join(O, GEN.ENS))
     data = load_ens(os.path.join(O, 'dataset_ensemble.txt'))
-    walks_gen = [l.split()[0] for l in open(os.path.join(O, 'screening_walks.txt'))]
+    walks_gen = [l.split()[0] for l in open(os.path.join(O, GEN.WALKS))]
     rows = [l.split() for l in open(os.path.join(H, 'data/group-contrib/polymer_walks_v2_preprocess.txt'))]
     counts = {}
     for gas, (pair, k, n, (tp, ts)) in GAS.items():

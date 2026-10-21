@@ -6,6 +6,7 @@ import os, sys, re, json, shutil
 from copy import deepcopy
 H = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, H)
 from docx_tools import *
+import gen_set as GEN                       # which generated set Tables S8/S9 list
 U = sys.argv[1]; DOC = os.path.join(U, 'word', 'document.xml'); O = os.path.join(H, 'outputs')
 t = load(DOC)
 log = []
@@ -50,9 +51,9 @@ replace_in_par(cap6, 'Data section).',
 log.append(f'Table S6: {len(walks)} rows; caption: {text(cap6)}')
 
 # ---- Table S8: generated structures; Table S9: their predicted properties
-gen = [l.rstrip('\n').split(' ') for l in open(os.path.join(O, 'gen', 'bestfirst_n1000_clean.txt'))]
+gen = [l.rstrip('\n').split(' ') for l in open(os.path.join(O, GEN.CLEAN))]
 fill_table_rows(tables_after(t, 'Table S8'), [[str(i + 1), g[2], g[0]] for i, g in enumerate(gen)])
-s9 = ens(os.path.join(O, 's9_ensemble.txt'))
+s9 = ens(os.path.join(O, GEN.ENS))
 props = ('H2', 'H2/N2', 'O2', 'O2/N2', 'CO2', 'CO2/CH4')
 fill_table_rows(tables_after(t, 'Table S9')[1:], [[str(i + 1)] + [f'{s9[(g[2], p)][0]:.1f}±{s9[(g[2], p)][1]:.1f}' for p in props]
                                                  for i, g in enumerate(gen)])

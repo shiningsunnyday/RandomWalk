@@ -120,19 +120,20 @@ log.append("[screening] 'Tables S9 and S10' -> 'Table S9'")
 # enumerating deeper lowers the proportion instead of raising it (uniqueness.py).
 _UQ = os.path.join(O, 'gen', 'uniqueness.json')
 if os.path.exists(_UQ):
-    _u = json.load(open(_UQ)); _l = _u['levels']['1000']; _m = _u['levels']['1400']
+    _u = json.load(open(_UQ)); _q = _u['unique']
     p = find_par(t, 'Common generation metrics are listed in Table 1')
     append_rich(p, (
-        ' The Unique column counts distinct repeat-unit molecules, and most of the gap to 100% is in how walks are '
-        f"enumerated rather than in the generator repeating itself. All {_l['walks']} walks are distinct as walks, "
-        f"and {_l['cycles']} remain distinct once a closed walk is identified with its cycle of motifs up to the "
-        'motif it is read from, which the enumeration emits once per starting motif; the remainder are different '
-        'motif pairs and attachment points that assemble into the same repeat unit once unconsumed attachment sites '
-        f"are capped. Enumerating further lowers the proportion rather than raising it, to {_m['unique_pct']:.0f}% "
-        f"over the first {_m['n']} walks, because the best-first order exhausts the most probable motif pairs first."),
+        ' The Unique column counts distinct repeat-unit molecules. Because a repeat unit is a closed walk, the same '
+        'cyclic unit can be reached once per motif it is read from, so the enumeration accepts a closed walk only if '
+        'its cycle of motifs, taken up to rotation and reflection, has not been accepted already: the search spends '
+        f"its budget on {_q['cycles']} distinct cycles rather than on re-deriving repeat units it has already "
+        f"produced. The residual gap to 100% is the map from walks to structures rather than the search. "
+        f"The {_q['cycles']} cycles give {_q['molecules']} distinct molecules, because different motif pairs and "
+        'different attachment points can assemble into the same repeat unit once unconsumed attachment sites are '
+        'capped — a non-injectivity of the walk-to-structure map, which no enumeration order can remove.'),
         deepcopy(p.findall(W + 'r')[-1]), deepcopy(sub_run(find_par(t, 'Polymer Membrane Testing.'))))
-    log.append(f"[generation metrics] Unique decomposition added ({_l['walks']} walks, {_l['cycles']} cycles, "
-               f"{_l['molecules']} molecules)")
+    log.append(f"[generation metrics] Unique decomposition added ({_q['walks']} walks, {_q['cycles']} cycles, "
+               f"{_q['molecules']} molecules)")
 
 # ---- Retro* tracks molecule size across methods, so the honest reading is not "our structures are easier to make"
 # but "best-first enumeration reaches the small, simple repeat units first" — which is the intended search order,

@@ -12,11 +12,11 @@
   [
    "Ours (motif-walk, best-first)",
    "90%",
-   "62%",
+   "75%",
    "100%",
-   "0.91",
-   "54%",
-   "16"
+   "0.90",
+   "55%",
+   "19"
   ],
   [
    "The 114 dataset monomers (reference)",
@@ -130,15 +130,15 @@
  "missing": [],
  "size_vs_retro": {
   "n": 12,
-  "pearson_r": -0.797,
-  "pearson_p": 0.0019246324697456314,
+  "pearson_r": -0.775,
+  "pearson_p": 0.003091835395638984,
   "spearman_rho": -0.543,
   "spearman_p": 0.0681500850864122,
   "points": [
    {
     "method": "Ours (motif-walk, best-first)",
-    "median_heavy_atoms": 16.0,
-    "retro": 0.539
+    "median_heavy_atoms": 19.0,
+    "retro": 0.545
    },
    {
     "method": "The 114 dataset monomers (reference)",
@@ -196,10 +196,10 @@
     "retro": 0.16
    }
   ],
-  "r_text": "\u22120.80",
+  "r_text": "\u22120.77",
   "dataset_retro": "9%",
-  "ours_retro": "54%",
-  "ours_median_ha": "16",
+  "ours_retro": "55%",
+  "ours_median_ha": "19",
   "dataset_median_ha": "52"
  }
 }

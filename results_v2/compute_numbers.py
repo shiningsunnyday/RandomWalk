@@ -15,13 +15,14 @@ from rdkit import Chem, RDLogger
 from rdkit.Chem import AllChem, DataStructs
 RDLogger.DisableLog('rdApp.*')
 H = os.path.dirname(os.path.abspath(__file__)); O = os.path.join(H, 'outputs'); D = os.path.join(H, 'data', 'group-contrib')
+import gen_set as GEN                       # which generated set Table 1 reports
 N = {}
 
 # ---- Table 1
 c = json.load(open(os.path.join(O, 'gen', 'random_n1000_s0_counters.json')))
 t, wi, ci = c['num_tried'], c['walk_invalid'], c['chemical_invalid']
 valid_walk, valid_smarts, valid_smiles = 1 - wi / t, 1 - ci / (t - wi), c['num_valid'] / (t - wi - ci)
-gen = [l.rstrip('\n').split(' ') for l in open(os.path.join(O, 'gen', 'bestfirst_n1000_clean.txt'))]
+gen = [l.rstrip('\n').split(' ') for l in open(os.path.join(O, GEN.CLEAN))]
 assert all(g[1] == '1' for g in gen), 'some best-first structures do not sanitize'
 can = [Chem.MolToSmiles(Chem.MolFromSmiles(g[0])) for g in gen]
 train = {Chem.MolToSmiles(Chem.MolFromSmiles(l.split()[0])) for l in open(os.path.join(D, 'polymer_walks_v2_smiles.txt')) if l.strip()}
@@ -29,7 +30,7 @@ unique = len(set(can)) / len(can); novel = sum(x not in train for x in can) / le
 fps = [AllChem.GetMorganFingerprintAsBitVect(Chem.MolFromSmiles(x), 3, 2048) for x in can]
 sim = sum(sum(DataStructs.BulkTanimotoSimilarity(fps[i], fps[:i])) for i in range(len(fps)))
 diversity = 1 - sim / (len(fps) * (len(fps) - 1) / 2)
-retro = [l.split()[-1] for l in open(os.path.join(O, 'retro', 'bestfirst_clean_retro.txt')) if l.strip()]
+retro = [l.split()[-1] for l in open(os.path.join(O, GEN.RETRO)) if l.strip()]
 rs = sum(x == 'True' for x in retro) / len(retro)
 pct = lambda x: f'{100 * x:.0f}%'
 N['table1'] = [pct(valid_walk), pct(valid_smarts), pct(valid_smiles), pct(unique), pct(novel), f'{diversity:.2f}', pct(rs)]
