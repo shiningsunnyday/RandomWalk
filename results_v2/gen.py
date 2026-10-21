@@ -19,13 +19,24 @@ sys.path.insert(0, CODE); os.chdir(CODE)
 from diffusion import *
 
 mode = sys.argv[1]; n = int(sys.argv[2]); seed = int(sys.argv[3]) if len(sys.argv) > 3 else 0
+# Sampling temperature controls, for the unified i.i.d.-sampling comparison (BRIEFING_2 table B). The submitted
+# random-sampling run used the grammar's own defaults, min_thresh 0.1 with no softmax, which keeps only transitions
+# above 10% probability and so concentrates the sample on the most probable walks: ten independent seeds of 1000
+# samples found only 116 distinct molecules between them. These let the same sampler be run with the threshold
+# lowered or with a temperature, which is what an i.i.d. comparison against the baselines needs.
+# env: GEN_MIN_THRESH (default 0.1), GEN_SOFTMAX (0|1), GEN_TEMP (softmax temperature), GEN_TAG (output suffix)
+MIN_THRESH = float(os.environ.get('GEN_MIN_THRESH', 0.1))
+SOFTMAX = os.environ.get('GEN_SOFTMAX', '0') == '1'
+TEMP = float(os.environ.get('GEN_TEMP', 1.0))
+TAG = os.environ.get('GEN_TAG', '')
 random.seed(seed); np.random.seed(seed); torch.manual_seed(seed)
 cfg = json.load(open(os.path.join(H, 'grammar', 'config.json'))); cfg = json.loads(cfg) if isinstance(cfg, str) else cfg
 args = argparse.Namespace(**cfg)
 args.dags_file = f'{GC}/dags.pkl'; args.data_file = args.walks_file = f'{GC}/polymer_walks_v2_preprocess.txt'
 args.motifs_folder = f'{GC}/all_groups/'; args.extra_label_path = f'{GC}/all_groups/all_extra.txt'
 args.predefined_graph_file = f'{GC}/red_graph.edgelist'; args.log_folder = OUT + '/'
-args.num_generate_samples = n; args.min_thresh = 0.1; args.max_thresh = 0.9; args.softmax = False
+args.num_generate_samples = n; args.min_thresh = MIN_THRESH; args.max_thresh = 0.9; args.softmax = SOFTMAX
+args.softmax_temp = TEMP
 args.concat_mol_feats = False
 diffusion_args = {k[len('diffusion_'):]: v for (k, v) in args.__dict__.items() if 'diffusion' in k}
 graph = nx.read_edgelist(args.predefined_graph_file, create_using=nx.MultiDiGraph)
@@ -58,9 +69,9 @@ if mode == 'random':
     novel, new_dags, trajs, m = sample_walks(args, G, graph, seen_dags, model, all_nodes, r_lookup, diffusion_args,
                                              return_metrics=True, loop_back=True)
     print('GEN_METRICS', json.dumps(m), flush=True)
-    json.dump(m, open(f'{OUT}/random_n{n}_s{seed}_counters.json', 'w'))
+    json.dump(m, open(f'{OUT}/random{TAG}_n{n}_s{seed}_counters.json', 'w'))
     json.dump([{'walk': x[0], 'raw_smiles': d.smiles} for x, d in zip(novel, new_dags)],
-              open(f'{OUT}/random_n{n}_s{seed}.json', 'w'), indent=0)
+              open(f'{OUT}/random{TAG}_n{n}_s{seed}.json', 'w'), indent=0)
 elif mode == 'bestfirst':
     walks = extract_all_walks(args, G, graph, seen_dags, model, all_nodes, r_lookup, predefined_graph)
     recs = [record(process_good_traj(w[0], all_nodes), w[1], w[2]) for w in walks]

@@ -1034,3 +1034,68 @@ i.i.d.-sampling comparison under one protocol for everyone, with both runs you a
 N unique — derived from a single stream per method so the two rows of a method are the same draw, and
 "samples needed for N unique" is exact rather than extrapolated. Ten parallel sampling runs of our own grammar are
 going now (the sampler is 21 minutes for 1000 valid structures single-process, so ten seeds give 10,000).
+
+---
+
+## 10. Item 3's second table: the i.i.d.-sampling comparison, and what it says about our sampler
+
+**This section contains the one result in today's work that cuts against us, so it is first.** Under the unified
+protocol you asked for — every method draws i.i.d. samples, we measure the same things on all of them — our
+grammar's ancestral sampler is the *least* diverse of every method that produces novel molecules.
+
+| method (1000 i.i.d. samples) | Valid | Unique | Novel | Diversity | median heavy atoms |
+|---|---|---|---|---|---|
+| **Ours (motif-walk, i.i.d. sampling)** | 96% | **7%** | 100% | 0.90 | 20 |
+| Graph GA (unconditional) | 100% | **91%** | 100% | 0.91 | 25 |
+| Graph GA (CO₂-conditioned) | 100% | 86% | 98% | 0.83 | 43 |
+| REINVENT 4 (transfer + RL) | 99% | 73% | 99% | 0.87 | 24 |
+| REINVENT 4 (transfer only) | 88% | 46% | **57%** | 0.88 | 40 |
+
+And protocol (ii), sample until 1000 distinct molecules:
+
+| method | samples drawn | reached 1000 distinct? | distinct found |
+|---|---|---|---|
+| **Ours** | **10,000** | **no** | **116** |
+| Graph GA (unconditional) | 1,104 | yes | 1,000 |
+| REINVENT 4 (transfer + RL) | 1,419 | yes | 1,000 |
+| REINVENT 4 (transfer only) | 2,441 | yes | 1,000 |
+| Graph GA (CO₂-conditioned) | 1,000 (budget) | no | 857 |
+
+**It is not an artefact, and I checked that before writing it down.** The ten seeds are independent runs with
+different sample counts, and each one finds about 70 distinct molecules per 1000 samples; their union over 10,000
+samples is 116 distinct molecules from 291 distinct walks, and the single most frequent molecule appears 1963
+times. The sampler is drawing from a transition distribution that is genuinely concentrated.
+
+**I tried to fix it and could not, which is itself informative.** Two knobs exist. Lowering `min_thresh` from 0.1 to
+0 does not broaden the distribution — it is a *stopping* criterion, not a truncation (`sample_walk` breaks when no
+transition exceeds the threshold, and samples over the full distribution otherwise), so removing it lets walks run
+on instead of closing: a 1000-sample run produced **no** accepted structures in 100 seconds, against a steady
+stream for the default. Temperature sampling (`--softmax`) fails the same way. So the default regime is the only
+one in which the sampler closes walks at a usable rate, and in that regime it is concentrated. `gen.py` now takes
+`GEN_MIN_THRESH`, `GEN_SOFTMAX`, `GEN_TEMP` and `GEN_TAG` so this is reproducible rather than asserted.
+
+**Why this argues for your two-table split rather than against it.** The best-first enumeration reaches **753
+distinct molecules in 1000 walks**; i.i.d. sampling needs more than 10,000 to reach 116. That is a factor of about
+65 in favour of the enumeration, measured on the same grammar — and it is the quantitative version of the point you
+wanted Table A to make. The concentration is *why* enumeration is the right read-out: probability mass sitting on
+few walks is what makes "the model's highest-confidence structures" a meaningful object, and the enumeration spends
+its budget walking down that ranking instead of resampling the mode. Graph GA has the opposite profile: it is
+diverse because it is a mutation operator with no learned distribution to concentrate, which is also why its
+structures are larger and score worse on Retro\*.
+
+**What I would do with it in the paper.** State it. A referee who samples from the released grammar will find this
+in an afternoon, and the honest version is a strength: Table A is the systematic enumeration, which is what the
+method is *for*; Table B is the i.i.d. comparison, in which our sampler is concentrated and the baselines are
+diverse, with the 65× enumeration-versus-sampling gap stated in the same paragraph. The alternative — publishing
+only Table A — leaves the obvious question unanswered.
+
+**Protocol details, for the record.** One stream per method; protocol (i) is its first 1000 and protocol (ii) is the
+prefix of the *same* stream that first contains 1000 distinct molecules, so the two rows are one draw and
+"samples needed" is exact. Models are the checkpoints the original 1000-sample runs trained, so the generative
+model is identical across both tables; `smiles_lm.py` and `jtvae_run.py` gained a `--sample_only` path for that.
+Streams: 20,000 for the SMILES LMs, Graph GA (uncond) and both REINVENT agents; 1000 for Hier-VAE, JT-VAE and DEG,
+whose decoders are far too slow to draw 20,000 (Hier-VAE managed 100 samples in 16 minutes), so those three are
+reported at their original budget and cannot be said to have *failed* protocol (ii). Our stream is 10,000, from ten
+parallel runs of `gen.py random`, cleaned by `clean_random.py`, which re-derives each walk's motif-graph edges the
+same way `gen.py record()` does; 368 of the 10,000 fail to rebuild from the walk string alone and are counted
+invalid, which makes our Valid a floor rather than a point estimate.
