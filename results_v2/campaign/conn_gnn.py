@@ -53,6 +53,12 @@ ap.add_argument('--msg', default='both', choices=['both', 'base'])
 ap.add_argument('--red', default='edge', choices=['edge', 'all'])
 ap.add_argument('--atom_npz', default=os.path.join(H, 'outputs', 'atom_feats', 'supervised_contextpred.npz'))
 ap.add_argument('--epochs', type=int, default=400)
+# the two campaign changes that are orthogonal to the representation (BRIEFING_2 6b): a robust loss and the log
+# target. --log_target takes log10 of permeability and selectivity before the training-split normalization, exactly
+# as campaign/code/main.py's --log_target does, so this arm is comparable to the campaign's `log` arm and not to
+# `base`, whose MAE is in raw-normalized units.
+ap.add_argument('--huber', type=float, default=0.0)
+ap.add_argument('--log_target', action='store_true')
 ap.add_argument('--out', default=os.path.join(H, 'outputs', 'conn'))
 cli = ap.parse_args()
 SEEDS = ([int(x) for x in cli.seeds.split(',')] if ',' in cli.seeds else
@@ -275,13 +281,14 @@ if os.environ.get('CONN_FIXED'):
 def run_one(bt, bv, bte, y, tr, va, te, cfg, seed):
     torch.manual_seed(seed)
     model = ConnGNN(bt['all'].shape[1], cfg['hid'], cfg['layers'], cfg['dropout'], cli.msg == 'both')
+    lossf = nn.HuberLoss(delta=cli.huber) if cli.huber > 0 else None
     opt = torch.optim.Adam(model.parameters(), lr=cfg['lr'])
     Y = torch.tensor(y, dtype=torch.float32)
     ytr, yva = Y[tr], Y[va]
     best = (1e9, None, -1)
     for ep in range(cli.epochs):
         model.train(); opt.zero_grad()
-        loss = ((model(bt) - ytr) ** 2).mean()
+        loss = (lossf(model(bt), ytr) if lossf is not None else ((model(bt) - ytr) ** 2).mean())
         loss.backward(); opt.step()
         if ep % 5 == 0 or ep == cli.epochs - 1:
             model.eval()
@@ -301,7 +308,11 @@ def main():
     for pair in D.pairs():
         rows = D.masked(pair)
         graphs = tensors(build(rows, feats, G), feats)
-        y_raw = D.targets(pair)
+        y_true_raw = D.targets(pair)                 # always the raw targets, for the comparable metric below
+        y_raw = y_true_raw
+        if cli.log_target:
+            assert (y_raw > 0).all(), 'log_target needs strictly positive targets'
+            y_raw = np.log10(y_raw)
         for seed in SEEDS:
             tr, va, te = D.split(pair, seed)
             y, mu, sd = D.normalize(y_raw, tr)
@@ -313,8 +324,20 @@ def main():
                     picked = (vl, tp, ep, ci, cfg)
             vl, tp, ep, ci, cfg = picked                     # validation alone picks config and epoch
             mae, r2 = D.metrics(y[te], tp)
+            # A log-target model's MAE and R^2 live on log-transformed targets, which is a different and easier
+            # metric: it is not comparable with a raw-target arm, nor with the baselines, which back-transform.
+            # So report both. The raw-scale numbers invert the log, renormalize with the training split's raw
+            # statistics and score against the raw truth, exactly as baselines/bl_classical.py's fit_eval does.
+            if cli.log_target:
+                mu_l, sd_l = y_raw[tr].mean(axis=0), y_raw[tr].std(axis=0)
+                mu_r, sd_r = y_true_raw[tr].mean(axis=0), y_true_raw[tr].std(axis=0)
+                p_raw = (np.power(10.0, np.clip(tp * sd_l + mu_l, -8, 9)) - mu_r) / sd_r
+                mae_raw, r2_raw = D.metrics((y_true_raw[te] - mu_r) / sd_r, p_raw)
+            else:
+                mae_raw, r2_raw = mae, r2
             for j, name in enumerate(D.TARGET_NAMES[pair]):
                 rows_out.append(dict(arm=cli.arm, pair=pair, seed=seed, prop=name, mae=mae[j], r2=r2[j],
+                                     raw_mae=mae_raw[j], raw_r2=r2_raw[j],
                                      val_loss=vl, epoch=ep, config=ci, **cfg))
             print(f'{pair} seed {seed}: val {vl:.3f} ep {ep} cfg {ci} '
                   f'MAE {mae[0]:.3f}/{mae[1]:.3f} R2 {r2[0]:.3f}/{r2[1]:.3f} ({time.time() - t0:.0f}s)', flush=True)
@@ -324,11 +347,16 @@ def main():
         w = csv.DictWriter(f, fieldnames=list(rows_out[0]))
         w.writeheader(); w.writerows(rows_out)
     mae = float(np.mean([r['mae'] for r in rows_out])); r2 = float(np.mean([r['r2'] for r in rows_out]))
+    mae_r = float(np.mean([r['raw_mae'] for r in rows_out])); r2_r = float(np.mean([r['raw_r2'] for r in rows_out]))
+    V_r = float(np.mean([np.std([r['raw_r2'] for r in rows_out if r['prop'] == p])
+                         for p in {r['prop'] for r in rows_out}]))
+    print(f'{cli.arm}: back-transformed raw scale  MAE {mae_r:.3f}  R2 {r2_r:.3f}  V {V_r:.3f}')
     V = float(np.mean([np.std([r['r2'] for r in rows_out if r['prop'] == p])
                        for p in {r['prop'] for r in rows_out}]))
     print(f'\n{cli.arm}: MAE {mae:.3f}  R2 {r2:.3f}  V {V:.3f}  ({len(rows_out)} cells, {time.time() - t0:.0f}s)')
     json.dump({'arm': cli.arm, 'feat': cli.feat, 'msg': cli.msg, 'red': cli.red,
-               'mae': mae, 'r2': r2, 'V': V, 'n': len(rows_out)},
+               'mae': mae, 'r2': r2, 'V': V, 'n': len(rows_out),
+               'raw_mae': mae_r, 'raw_r2': r2_r, 'raw_V': V_r, 'log_target': bool(cli.log_target)},
               open(os.path.join(cli.out, f'{cli.arm}.json'), 'w'), indent=1)
 
 

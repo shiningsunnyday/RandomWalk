@@ -1153,3 +1153,61 @@ if we adopt it the stability argument in §6b still wants the log target on top.
 
 **Code.** `campaign/atom_feats.py` (pretrained GIN, per-atom, with the red/black masks) and `campaign/conn_gnn.py`
 (the model, the ablation flags and the protocol). Nothing in `code/` or `campaign/code/` was touched.
+
+---
+
+## 12. **Correction: the case for the log target was a metric artefact. Decision 0 reverses.**
+
+Read this before acting on decision 0 or on anything I have said about `log` today or yesterday.
+
+**What I got wrong.** `summarize_campaign.py` reports `{prop}|mae` and `{prop}|r^2`, which are computed on
+*whatever scale the arm trained on*. For a `--log_target` arm that is log₁₀ space. I compared those numbers
+directly with `base`, whose metrics are in raw-normalized space, and built decision 0 on the comparison. Log
+compresses the range, so both MAE and R² are easier there: the comparison was never like-for-like.
+
+**The campaign's own code had the right numbers all along and I did not use them.** The same patch that added
+`--log_target` also writes back-transformed metrics into `{prop}|rawmae` and `{prop}|rawr2`, which invert the log,
+renormalize with the training split's raw statistics and score against the raw truth — the scale Table 2 reports
+and the scale the baselines use. On that common scale:
+
+| arm | MAE | R² | V | cells with R² < 0 (of 60) |
+|---|---|---|---|---|
+| `base` (published) | 0.461 | 0.342 | 0.525 | 5 |
+| `log` | **0.463** | **0.319** | **0.528** | **9** |
+| `log` + δ = 0.5 | 0.467 | 0.314 | 0.559 | 7 |
+| `combo_y2` (log + stratified) | 0.446 | 0.287 | 0.651 | 7 |
+| **`huber05`** | **0.431** | **0.496** | **0.281** | **4** |
+| `strat_struct` | 0.437 | 0.456 | 0.376 | 8 |
+
+Paired against `base` on the raw scale, `log` is **ΔMAE +0.002 (t = 0.10), ΔR² −0.023 (t = −0.21)** — not an
+improvement, a wash that leans slightly negative. Every specific claim I made for it inverts:
+
+- "R² 0.636 against 0.342" → **0.319 against 0.342**, slightly worse.
+- "V 0.121 against 0.525" → **0.528 against 0.525**, unchanged.
+- "`log` + δ = 0.5 is the only configuration with no negative R² anywhere in 60 cells" → **7 negative cells**, and
+  plain `log` has **9**, against `base`'s 5. The tail-risk table in §6b is wrong in the same way and the ordering
+  in it reverses.
+
+**What survives, and it is the thing I should have been recommending.** `huber05` does not transform the target, so
+its native and raw numbers are identical and were always comparable: **0.431 MAE, R² 0.496, V 0.281, ΔR² +0.154 at
+t = 2.34**, and the fewest negative-R² cells of any arm. It was the one option in §6b I described as having "no
+reporting caveat at all" — that is now its whole case, and it is a real one. `strat_struct` is likewise unaffected
+(0.437 / 0.456 / 0.376), as are all of §6c's representation arms and all of §11's connection-aware arms except the
+two log ones.
+
+**Revised decision 0.** Adopt **`huber05`** — one line in the loss, Table 2 stays in raw barrer, R² stays in the
+units the paper already uses, the test split stays a uniform draw, and it is the only change that improves MAE, R²
+and V together on the scale the paper reports. Do **not** adopt the log target; there is no evidence for it once
+the metric is put on a common footing. If you had already decided for `log` on the strength of §6b, this undoes
+that decision, and I am sorry to have argued it as hard as I did.
+
+**What this does not touch.** The baseline comparison (Tables S12/S13) is unaffected — `bl_classical.py` always
+back-transformed, which is how I noticed. The K = 10 protocol finding in §6a is unaffected. §6c and §11 are
+unaffected apart from the two log arms, whose raw-scale numbers are re-running. The screening-count argument
+("`log` alone takes O₂/N₂ from 3 structures to 223") is a statement about a particular model's predictions and
+still holds as a fact, but it can no longer be supported by claiming that model is more accurate.
+
+**Why it took until now to find.** The baselines' `fit_eval` back-transforms before scoring; the campaign's
+summarizer does not. I only put a log-target arm and a baseline into the same sentence when today's
+connection-aware model reached 0.401 in log space and I went to check whether that beat polyBERT + ridge's 0.412.
+It does not — 0.401 is a log-space number and 0.412 is a raw-scale one. That check is what exposed the rest.
