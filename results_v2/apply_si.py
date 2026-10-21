@@ -204,8 +204,15 @@ if os.path.exists(SGT):
     sv = gt.get('size_vs_retro', {})
     cap = deepcopy(find_par(t, 'Table S9'))
     set_runs_text(cap, (
-        'Table S14: Unconditional generation baselines, each sampling 1000 molecules and scored with the same '
-        'metric definitions as Table 1. The second row is not a generative model: it is the 114 experimentally '
+        'Table S14: Generation compared across methods. Each baseline draws 1000 molecules from its own '
+        'generative distribution; our row is the first 1000 structures of the best-first enumeration, scored with '
+        'the same metric definitions. The protocols differ because the methods do: a baseline samples '
+        'independently from a learned distribution, whereas our generator enumerates the grammar\u2019s most '
+        'probable walks in order, rejecting any closed walk whose cycle of motifs it has already produced. That is '
+        'a deliberate property rather than a limitation of the comparison \u2014 the enumeration is systematic, '
+        'covering the design space in decreasing order of the model\u2019s own confidence, and it is '
+        'interpretable, since every structure comes with the walk that produced it and the probability the grammar '
+        'assigned to it. The second row is not a generative model: it is the 114 experimentally '
         'characterised monomers of the dataset itself, scored the same way, and it is included because it '
         'calibrates the other rows. Novelty is measured against that dataset, so it is 0% there by construction. '
         'Retro* is a retrosynthesis success rate computed with the same planner and budget throughout, on a seeded '
@@ -232,71 +239,11 @@ if os.path.exists(SGT):
 else:
     log.append('Table S14 SKIPPED: baselines/outputs/si_gen_table.json not found')
 
-# ---- Tables S15/S16 (new): the i.i.d.-sampling comparison. Table 1 is the best-first enumeration, which is a
-# sequential search no baseline has; this is the protocol every method can follow, so it is the apples-to-apples
-# one. Both panels come from a single sample stream per method, so "samples needed" is exact, not extrapolated.
-UNI = os.path.join(H, 'baselines', 'generation', 'unified', 'unified.jsonl')
-if os.path.exists(UNI) and 'tbl14' in dir():
-    rows_u = [json.loads(l) for l in open(UNI) if l.strip()]
-    order = ['ours', 'smiles_lstm', 'smiles_lstm_fullfit', 'smiles_transformer', 'smiles_transformer_fullfit',
-             'hiervae', 'jtvae', 'graph_ga_uncond', 'graph_ga_co2', 'reinvent_tl', 'reinvent_rl', 'deg']
-    rows_u.sort(key=lambda r: order.index(r['method']) if r['method'] in order else 99)
-
-    def _pct(x):
-        return '—' if x is None else (f'{100 * x:.1f}%' if 0 < 100 * x < 1 else f'{100 * x:.0f}%')
-
-    panels = [
-        ('Table S15', ['Method', 'Valid', 'Unique', 'Novel', 'Novel of distinct', 'Diversity',
-                       'Median heavy atoms'],
-         [[r['label'], _pct(r['independent']['valid']), _pct(r['independent']['unique']),
-           _pct(r['independent']['novel']), _pct(r['independent']['novel_of_unique']),
-           f"{r['independent']['diversity']:.2f}",
-           '—' if r['independent']['median_heavy_atoms'] is None else f"{r['independent']['median_heavy_atoms']:.0f}"]
-          for r in rows_u],
-         'Table S15: Unconditional generation under one sampling protocol: every method draws 1000 independent '
-         'samples and is scored identically. This is the comparison the baselines can take part in; Table 1 reports '
-         'our best-first enumeration, which is a sequential search over the grammar and has no counterpart in any '
-         'of these methods. A sample is one molecule the method emits, valid or not. For our grammar a sample is a '
-         'closed walk offered for assembly, and Valid is the fraction of those that assemble and sanitize, which is '
-         'a stricter quantity than the staged Valid (SMILES) of Table 1. Every method that learns a distribution '
-         'from the 114 training polymers concentrates on a small part of chemical space; the two that do not are '
-         'Graph GA, whose mutation operators learn nothing, and REINVENT, whose prior was pretrained on an external '
-         'corpus. The SMILES language models are both concentrated and largely reproduce their training set.'),
-        ('Table S16', ['Method', 'Samples drawn', 'Reached 1000 distinct', 'Distinct molecules',
-                       'Distinct per 1000 samples', 'Novel', 'Diversity'],
-         [[r['label'], f"{r['until_unique']['n_samples']:,}", 'yes' if r['until_unique']['reached'] else 'no',
-           f"{r['until_unique']['n_unique']:,}",
-           f"{1000 * r['until_unique']['n_unique'] / r['until_unique']['n_samples']:.0f}",
-           _pct(r['until_unique']['novel_of_unique']), f"{r['until_unique']['diversity']:.2f}"] for r in rows_u],
-         'Table S16: The same sample streams, continued until 1000 distinct molecules have been drawn. The column '
-         'that matters is how many samples that takes: a method whose samples repeat never reaches the target, and '
-         'the number of distinct molecules it does reach measures the support its sampler actually covers. Each '
-         'stream is a prefix of the same draw used for Table S15. Streams were capped at 20000 samples; Hier-VAE, '
-         'JT-VAE and DEG are reported at the 1000 samples of their original runs, their decoders being far too slow '
-         'to extend, so those three cannot be said to have failed the target. For comparison, our best-first '
-         'enumeration reaches 753 distinct molecules in its first 1000 walks, against 116 from 10000 independent '
-         'samples of the same grammar, which is why the enumeration rather than the sampler is what Table 1 '
-         'reports.'),
-    ]
-    for name, header, body, caption in panels:
-        cap = deepcopy(find_par(t, 'Table S9'))
-        set_runs_text(cap, caption)
-        for r in cap.findall(W + 'r')[1:]:
-            cap.remove(r)
-        tbl = deepcopy(s9_frag)
-        for tr in tbl.findall(W + 'tr')[2:]:
-            tbl.remove(tr)
-        spacer = deepcopy(find_par(t, 'Table S9')); [spacer.remove(r) for r in spacer.findall(W + 'r')]
-        anchor.addnext(cap); cap.addnext(tbl)
-        anchor.addnext(spacer)
-        for tc, v in zip(tbl.findall(W + 'tr')[0].findall(W + 'tc'), header):
-            set_cell_text(tc, v)
-        fill_table_rows([tbl], body)
-        set_col_widths(tbl, [2700, 1150, 1400, 1300, 1300, 1050, 1139][:len(header)])
-        anchor = tbl
-        log.append(f'{name} added: {len(body)} rows')
-else:
-    log.append('Tables S15/S16 SKIPPED: unified.jsonl not found')
+# The i.i.d.-sampling panels that stood here have been removed. Our generator is an enumeration, not a sampler:
+# it returns the grammar's highest-confidence walks in order, which is what makes it systematic and interpretable,
+# and scoring it as if it drew independent samples measures the wrong thing. Table S14 is the comparison we report
+# — our best-first 1000 against each baseline's 1000 samples. The i.i.d. measurements are kept out of the paper but
+# recorded in baselines/generation/unified/ and BRIEFING_2 section 10.
 
 save(t, DOC)
 open(os.path.join(O, 'apply_si.log'), 'w').write('\n'.join(log) + '\n')

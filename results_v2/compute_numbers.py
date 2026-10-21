@@ -150,6 +150,50 @@ N['calibration'] = {
 N['calibration']['cal']['improvement_pct'] = int(round(100 * (1 - N['calibration']['cal']['mean_abs_log10']
                                                              / N['calibration']['raw']['mean_abs_log10'])))
 
+# ---- the connection-aware predictor (campaign/conn_gnn.py), which is the model this revision prescribes.
+# Metrics are on the back-transformed raw scale throughout, so every arm and every baseline is on one footing;
+# `base` is the published configuration run under the same ten-split protocol.
+_CONN = os.path.join(H, 'campaign', 'outputs', 'conn')
+if os.path.isdir(_CONN):
+    import csv as _csv
+
+    def _cells(arm):
+        p = os.path.join(_CONN, f'{arm}.csv')
+        if not os.path.exists(p):
+            return {}
+        return {(r['prop'], int(r['seed'])): (float(r.get('raw_mae') or r['mae']), float(r.get('raw_r2') or r['r2']))
+                for r in _csv.DictReader(open(p))}
+
+    _cr = pd.read_csv(os.path.join(H, 'campaign', 'outputs', 'campaign_runs.csv'))
+    _P6 = ['H2', 'H2/N2', 'O2', 'O2/N2', 'CO2', 'CO2/CH4']
+    _b = {}
+    _g = _cr[_cr.arm == 'base']
+    for _p in _P6:
+        for _s, _gs in _g[_g[f'{_p}|r^2'].notna()].groupby('seed'):
+            _x = _gs.loc[_gs['val_loss'].idxmin()]
+            _b[(_p, _s)] = (_x[f'{_p}|rawmae'], _x[f'{_p}|rawr2'])
+
+    def _stat(c, ref=None):
+        out = {'mae': float(np.mean([v[0] for v in c.values()])),
+               'r2': float(np.mean([v[1] for v in c.values()])),
+               'n': len(c)}
+        if ref:
+            k = sorted(set(c) & set(ref))
+            d_ = np.array([c[i][0] - ref[i][0] for i in k])
+            out['dmae'] = float(d_.mean())
+            out['t'] = float(d_.mean() / (d_.std(ddof=1) / len(d_) ** 0.5))
+        return out
+
+    N['conn'] = {'base': _stat(_b)}
+    for _a, _tag in (('conn_r', 'conn'), ('conn_nored', 'nored'), ('conn_redall', 'redall'),
+                     ('conn_fp', 'fp'), ('conn_fixed', 'fixed')):
+        _c = _cells(_a)
+        if _c:
+            N['conn'][_tag] = _stat(_c, _b)
+    _cn, _nr = _cells('conn_r'), _cells('conn_nored')
+    if _cn and _nr:
+        N['conn']['conn_vs_nored'] = _stat(_cn, _nr)
+
 # ---- molecular weight vs measured permeability (reviewer asked whether the films are representative).
 # The GPC values are reported per polymer in the synthesis section but never related to the transport data.
 from scipy.stats import spearmanr

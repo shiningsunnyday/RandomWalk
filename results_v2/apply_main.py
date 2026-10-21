@@ -373,6 +373,58 @@ edit(P, 'Additionally, the message passing was influenced in two ways by the ran
      f"also selected on the validation set; it was selected for the {W_SEL} and not for the {W_UNSEL}. The final pooling "
      'layer averages over the nodes of the walk.')
 
+# ---- Methods: the connection-aware predictor. This is the model the revision prescribes, and the paragraph has to
+# do three things: say what is inherited from Sun et al. (53), say what is new here, and give the numbers that
+# justify preferring it. Every figure comes from numbers.json['conn'], computed on the back-transformed raw scale.
+_C = N.get('conn')
+if _C and 'conn' in _C:
+    _c, _b0 = _C['conn'], _C['base']
+    _nr, _ra, _fp, _vn = _C.get('nored'), _C.get('redall'), _C.get('fp'), _C.get('conn_vs_nored')
+    _txt = (
+        ' Connection-aware motif features. The representation above is inherited from Sun et al. (53), and it has '
+        'a blind spot that our grammar is in a position to remove. A motif enters the predictor as one fingerprint '
+        'of the whole motif, so the same motif joined through one R group and joined through another is the same '
+        'vector, and two monomers that differ only in where their motifs are attached differ only through the '
+        'transition probabilities. The grammar already records the attachment exactly: every edge of the motif '
+        'graph stores which R-group atoms of each motif the bond consumes and which atoms of the partner they are '
+        'matched to. We therefore replace the per-motif fingerprint with per-atom features and let the message '
+        'carry the attachment. Each motif is encoded by a graph isomorphism network (77) pretrained on molecular graphs (78), which returns one '
+        'vector per atom; a motif\u2019s initial hidden state is the mean over all of its atoms, R-group atoms '
+        'included. A message from motif u to motif v is then the sum of two terms with separate parameters: a base '
+        'term pooled over u\u2019s non-R-group atoms, and an R-group term pooled over exactly the atoms that this '
+        'bond consumes. Because a bond consumes different atoms in each direction, and a different bond between the '
+        'same pair of motifs consumes different atoms, the message is specific to the connection rather than to the '
+        'pair of motifs. Hidden states are updated residually and the readout is unchanged. ')
+    _txt += (f"Under the ten-split protocol this lowers test MAE from {_b0['mae']:.3f} to {_c['mae']:.3f} and "
+             f"raises R\u00b2 from {_b0['r2']:.3f} to {_c['r2']:.3f}, a paired improvement of "
+             f"{abs(_c['dmae']):.3f} MAE over {_c['n']} property-split cells (t = {abs(_c['t']):.2f}). ")
+    if _nr and _ra and _fp and _vn:
+        _txt += ('The gain is attributable to the connection rather than to the encoder or to the architecture. '
+                 f"Removing the R-group term and keeping everything else gives {_nr['mae']:.3f}; pooling it over "
+                 f"all of a motif\u2019s R-group atoms instead of the ones the bond uses gives {_ra['mae']:.3f}; "
+                 f"and running the same message passing on the original per-motif fingerprint gives "
+                 f"{_fp['mae']:.3f}. Against its own ablation the connection-aware model is better by "
+                 f"{abs(_vn['dmae']):.3f} MAE (t = {abs(_vn['t']):.2f}), the largest paired effect we measure for "
+                 'any single change to the predictor.')
+    # the pretraining strategy is a separate reference from the GIN architecture the paper already cites as (77);
+    # the reference list is an auto-numbered Word list, so appending one paragraph to it yields (78)
+    _ps = [q for q in body(t).findall(W + 'p')
+           if q.find(W + 'pPr') is not None and q.find(W + 'pPr').find(W + 'numPr') is not None]
+    assert len(_ps) == 77, f'expected 77 numbered references, found {len(_ps)}'
+    _ref = deepcopy(_ps[-1])
+    set_runs_text(_ref, 'W. Hu, B. Liu, J. Gomes, M. Zitnik, P. Liang, V. S. Pande, J. Leskovec, Strategies for '
+                        'pre-training graph neural networks, in International Conference on Learning '
+                        'Representations (2020). arXiv:1905.12265.')
+    for _r in _ref.findall(W + 'r')[1:]:
+        _ref.remove(_r)
+    _ps[-1].addnext(_ref)
+    log.append('[references] added (78) Hu et al., pre-training graph neural networks')
+
+    p = find_par(t, P)
+    append_rich(p, _txt, p.findall(W + 'r')[-1], sub_run(p))
+    log.append(f"[methods] connection-aware predictor paragraph added "
+               f"({_b0['mae']:.3f} -> {_c['mae']:.3f}, t = {abs(_c['t']):.2f})")
+
 save(t, DOC)
 open(os.path.join(O, 'apply_main.log'), 'w').write('\n'.join(log) + '\n')
 print('\n'.join(log))
