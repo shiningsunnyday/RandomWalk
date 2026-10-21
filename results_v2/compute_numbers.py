@@ -113,6 +113,43 @@ N['lit_vs_lab'] = {'dataset_row': LIT_ROW, 'measured_as': LAB_POLYMER,
                    'lab_text': _andlist([f'{_lab[g]:.0f}' for g in ('H2', 'O2', 'CO2')]),
                    'ratio_range': f'{min(_lvl.values()):.1f} – {max(_lvl.values()):.1f}'}
 
+# ---- calibrating the predicted permeabilities on the one polymer measured in both protocols.
+# The offset above is a property of the measurement, not of the model: a literature permeability and ours for the
+# same repeat unit differ by 2.4-4.8x. Dividing the predicted permeabilities by that factor puts them on our own
+# lab's scale, which is the scale the other three polymers were measured on. The factor is identified on the
+# reference polymer alone, so the three novel polymers are a genuine out-of-sample test of it. Selectivities are
+# NOT calibrated: a selectivity is a ratio of two permeabilities measured on the same film, so the offset cancels
+# before any correction and applying one would double-count it (and does, measurably: 4/9 within error becomes 1/9).
+_CPERM = ('H2', 'O2', 'CO2')
+_c = {g: _lvl[g] for g in _CPERM}                      # literature / our lab on the reference, one factor per gas
+_novel = [p for p in walk_of if p != LAB_POLYMER]
+def _cal_stats(group, c):
+    rs = [(pred[(walk_of[n], g)][0] / c[g]) / EXP[n][g][0] for n in group for g in _CPERM]
+    within = sum(abs(pred[(walk_of[n], g)][0] / c[g] - EXP[n][g][0]) <= EXP[n][g][1] + pred[(walk_of[n], g)][1] / c[g]
+                 for n in group for g in _CPERM)
+    return {'n': len(rs), 'geomean': float(np.exp(np.mean(np.log(rs)))),
+            'mean_abs_log10': float(np.mean(np.abs(np.log10(rs)))), 'within': int(within),
+            'range': [float(min(rs)), float(max(rs))]}
+_one = float(np.exp(np.mean(np.log([pred[(walk_of[LAB_POLYMER], g)][0] / EXP[LAB_POLYMER][g][0] for g in _CPERM]))))
+N['calibration'] = {
+    'factors': _c, 'reference': LAB_POLYMER, 'novel': _novel,
+    'factor_text': ', '.join(f'{_c[g]:.1f}x for {g}' for g in _CPERM),
+    'raw': _cal_stats(_novel, {g: 1.0 for g in _CPERM}), 'cal': _cal_stats(_novel, _c),
+    'per_gas': {g: {'c': _c[g],
+                    'geomean_raw': float(np.exp(np.mean(np.log([pred[(walk_of[n], g)][0] / EXP[n][g][0]
+                                                                for n in _novel])))),
+                    'geomean_cal': float(np.exp(np.mean(np.log([(pred[(walk_of[n], g)][0] / _c[g]) / EXP[n][g][0]
+                                                                for n in _novel])))),
+                    'within_cal': int(sum(abs(pred[(walk_of[n], g)][0] / _c[g] - EXP[n][g][0])
+                                          <= EXP[n][g][1] + pred[(walk_of[n], g)][1] / _c[g] for n in _novel))}
+                for g in _CPERM},
+    # a one-parameter alternative: a single gain, the geometric mean of predicted/measured over the reference's three
+    # gases. Reported as a sensitivity check, because three factors identified from one polymer invites the question
+    # of whether the conclusion depends on that choice. It does not: the scatter falls either way.
+    'single_gain': {'c': _one, **_cal_stats(_novel, {g: _one for g in _CPERM})}}
+N['calibration']['cal']['improvement_pct'] = int(round(100 * (1 - N['calibration']['cal']['mean_abs_log10']
+                                                             / N['calibration']['raw']['mean_abs_log10'])))
+
 # ---- molecular weight vs measured permeability (reviewer asked whether the films are representative).
 # The GPC values are reported per polymer in the synthesis section but never related to the transport data.
 from scipy.stats import spearmanr

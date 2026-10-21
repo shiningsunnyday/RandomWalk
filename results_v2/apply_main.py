@@ -213,6 +213,35 @@ append_rich(p, (
     'constant scale factor rather than a change in ordering.'), normal, sub_run(p))
 log.append(f"[experimental] literature-vs-lab passage added ({L['dataset_row']} {L['lit_text']} vs {L['lab_text']})")
 
+# ---- Calibration: the offset above is identified on the one polymer measured both ways and removed from the other
+# three, which contribute nothing to it. Permeabilities only — a selectivity is a ratio on one film, so the offset
+# has already cancelled and correcting it again makes the agreement worse (measured: 4/9 within error -> 1/9).
+# Every number here is from numbers.json['calibration']; Figure 5 plots the same calibrated values.
+C = N['calibration']
+_g = C['per_gas']
+p = find_par(t, P)
+append_rich(p, (
+    'Because that offset is a property of the measurement rather than of the structure, it can be estimated on the '
+    f"one repeat unit measured both ways and removed from the others. Dividing each predicted permeability by the "
+    f"literature-to-laboratory factor for its gas — {C['factor_text'].replace('x', 'X')}, all fixed on "
+    f"{C['reference']} alone — places the predictions on the scale of our own films. The other three polymers "
+    'contribute nothing to those factors, so they are a genuine test of the correction, and on them the agreement '
+    f"improves: the mean absolute log~10~ ratio of predicted to measured permeability falls from "
+    f"{C['raw']['mean_abs_log10']:.2f} to {C['cal']['mean_abs_log10']:.2f}, and the number of predictions lying "
+    f"inside the combined measurement and ensemble error rises from {C['raw']['within']} of {C['raw']['n']} to "
+    f"{C['cal']['within']} of {C['cal']['n']}. For H~2~ the correction is essentially exact: the geometric mean of "
+    f"predicted to measured permeability is {_g['H2']['geomean_cal']:.2f} and all three polymers fall within error, "
+    f"against {_g['H2']['geomean_raw']:.1f} before calibration. For O~2~ and CO~2~ it overshoots "
+    f"({_g['O2']['geomean_cal']:.2f} and {_g['CO2']['geomean_cal']:.2f}), so the reference film's offset is an "
+    'upper bound on the offset carried by the others, as one would expect of a correction identified from a single '
+    f"pair of films. A single gain applied to all three gases, {C['single_gain']['c']:.1f}X, identified the same "
+    f"way, gives the same picture ({C['single_gain']['mean_abs_log10']:.2f}), so the conclusion does not rest on "
+    'fitting one factor per gas. Selectivities are reported uncalibrated throughout, because they are ratios taken '
+    'on one film and the offset has already cancelled in them.'), normal, sub_run(p))
+log.append(f"[experimental] calibration passage added (mean |log10| {C['raw']['mean_abs_log10']:.3f} -> "
+           f"{C['cal']['mean_abs_log10']:.3f}, within {C['raw']['within']}/{C['raw']['n']} -> "
+           f"{C['cal']['within']}/{C['cal']['n']})")
+
 # ---- Figure 5: new plot (PNG replaces the EMF) and caption
 rels_path = os.path.join(U, 'word', '_rels', 'document.xml.rels'); rels = open(rels_path).read()
 cap = find_par(t, 'Figure 5.'); e = cap.getprevious()
@@ -235,7 +264,11 @@ for ext in e.xpath('.//*[local-name()="extent" or local-name()="ext"]'):
         ext.set('cx', '5943600'); ext.set('cy', str(int(5943600 * h / w)))
 edit('Figure 5.', 'comparing model predictions (unfilled circles) and experimental results (filled circles).',
      'comparing model predictions (open diamonds) and experimental results (filled circles); dotted lines connect '
-     'the two for each polymer.')
+     'the two for each polymer. Predicted permeabilities are calibrated onto the scale of our own films by the '
+     f"literature-to-laboratory factor for each gas ({N['calibration']['factor_text'].replace('x', 'X')}), "
+     f"identified on {N['calibration']['reference']} alone, which is the one repeat unit for which both a "
+     'literature value and our own measurement exist; the uncalibrated predictions are shown as small grey '
+     'diamonds. Selectivities are not calibrated, being ratios taken on a single film.')
 edit('Figure 5.', ' of predictions over an ensemble of 3 models initialized with different random seeds.',
      ' of predictions over an ensemble of 3 models, each trained on a different train/test split.')
 log.append(f'Figure 5: {old_target} -> media/fig5_v2.png')
