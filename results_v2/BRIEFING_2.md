@@ -943,3 +943,94 @@ edited in place and nothing short of the original artwork will do.
 
 Everything else in Briefing 1 §6 is closed: the name collision is stated in the text (§4), the walk notation is
 reconciled in the Table S6 caption, and R-site masking is in Future work.
+
+---
+
+## 9. Your 2026-10-21 items: what is installed and what is running
+
+### Item 3 (unique-cycle generation) — **installed**, both documents rebuilt and in place
+
+Table 1 now reports the unique-cycle enumeration, and everything downstream of the generated set moved with it,
+so no number in the paper mixes the two sets:
+
+| | submitted | now |
+|---|---|---|
+| Valid (Walk / SMARTS / SMILES) | 63% / 100% / 90% | unchanged (these come from the random-sampling counters) |
+| **Unique** | **62%** | **75%** |
+| Novel | 100% | 100% |
+| Diversity | 0.91 | 0.90 |
+| Retro\* | 54% | 55% |
+| median heavy atoms (Table S14) | 16 | 19 |
+| Tables S8/S9 | the old 1000 | the new 1000, re-predicted with the same nine selected models |
+| Figs S2-S4 screening counts | 372 / 3 / 378 | 397 / 7 / 383 |
+| Retro\*-vs-size correlation | r = −0.80 | r = −0.77 (n = 12) |
+
+`gen_set.py` holds the one switch (`STEM`), so reverting is a one-line change and nothing under `outputs/` was
+overwritten — the two generated sets sit side by side. The uniqueness passage in the main text was rewritten: it
+now says the search rejects a closed walk whose cycle it has already accepted, and that the residual gap is the
+**non-injectivity of the walk-to-structure map** (1000 cycles → 753 molecules), which no enumeration order can
+remove. Per your instruction the baseline-comparability caveat is gone and not mentioned anywhere.
+
+**One thing I had to repair on the way.** `baselines/generation/metrics.jsonl` had DEG's Retro\* as null, with a
+note from a concurrent session saying the measurement was discarded as unverifiable because a second, overlapping
+Retro\* pass had overwritten `retro/manifest.json` while DEG's collect was running. The archived pair survived
+(`retro/manifest_run3.json`, 50 entries, with `retro/run3/combined_out.txt`, 50 lines), and the output file carries
+the SMILES of every molecule, so the pairing is checkable rather than merely assumed: all 50 SMILES match their
+manifest entry exactly, which a mispaired collect could not produce. DEG is 1/25 = 4% and JT-VAE 5/25 = 20% on that
+pass, the latter agreeing with the independently collected JT-VAE value. I restored DEG's 4% and replaced the note
+with the verification. Without it the table would have silently lost a row's Retro\* and the correlation would have
+been computed on 11 points instead of 12.
+
+### Item 2 (calibration) — **installed**
+
+Predicted permeabilities are now divided by the literature-to-laboratory factor for their gas (2.4X H₂, 3.8X O₂,
+4.8X CO₂), all fixed on PIM-PI-4, the one repeat unit with both a literature value and our own measurement.
+Selectivities are left alone. On the three polymers that contribute nothing to the factors:
+
+| | raw | calibrated |
+|---|---|---|
+| geometric-mean predicted/measured | 2.17 | 0.62 |
+| mean &#124;log₁₀ ratio&#124; | 0.336 | **0.233** (−31%) |
+| within combined error | 2/9 | **4/9** |
+| H₂ alone | 2.41, 0/3 within error | **1.00, 3/3 within error** |
+| O₂ / CO₂ | 2.21 / 1.92 | 0.59 / 0.40 (overshoots) |
+
+Figure 5 is regenerated: calibrated predictions as the coloured open diamonds, the uncalibrated ones as small grey
+diamonds with a connector, so the size of the correction is visible rather than asserted. The caption and a new
+Discussion passage state the factors, the improvement, and that H₂ lands exactly while O₂ and CO₂ overshoot — which
+says the reference film's offset is an upper bound on the others'. I also report a one-parameter version (a single
+3.3X gain for all three gases, identified the same way) that gives mean |log₁₀| 0.209, so the conclusion does not
+depend on fitting one factor per gas. That sensitivity line is what I would point a referee to if they object to
+three factors from one polymer.
+
+### Item 1 (connection-aware features) — **built, running**
+
+`campaign/atom_feats.py` + `campaign/conn_gnn.py`. Per-atom embeddings for all 99 motifs come from the pretrained
+GIN of Hu et al. (ICLR 2020), the checkpoint `data_efficient_grammar` ships (`supervised_contextpred.pth`), which
+is the encoder you pointed at; `mol_to_graph_data_obj_simple` keeps atom order, so row *i* of the output is atom *i*
+of the `.mol` file and the red/black masks index the same rows. 99 motifs, 1423 atoms, 350 of them red.
+
+The model is the one you described:
+
+- h⁰ = MLP(mean over **all** atoms of the group, red included)
+- message u→v = MLP_base([h_u ; mean over u's **black** atoms]) + MLP_red([h_u ; mean over **the red atoms this
+  bond consumes**])
+- h_v ← h_v + ReLU(MLP([h_v ; Σ messages])), readout = mean over nodes, same as now
+
+The red term is what makes a message orientation-dependent: u→v consumes `r_grp_1` of u, v→u consumes `r_grp_2` of
+v, and a different bond between the same motif pair consumes different atoms. The red graph already stores that
+four-tuple for every edge, so the information was there and nothing read it.
+
+Four arms at ten seeds, on bl_data's splits so the numbers are directly comparable to `base` (0.461 / 0.342):
+the model itself, `red all` (red atoms but not *which* group — removes exactly the connection-awareness),
+`msg base` (no red term), and `feat fp` (the published fingerprint through the same architecture, which separates
+the architecture from the encoder). Results in the next briefing.
+
+### Item 3's two generation tables — **in progress**
+
+Table A is the existing Table 1, reframed as what it is: the sequential, stateful best-first enumeration, which
+returns the grammar's highest-confidence walks in order and has no counterpart in any baseline. Table B is the
+i.i.d.-sampling comparison under one protocol for everyone, with both runs you asked for — draw N, and draw until
+N unique — derived from a single stream per method so the two rows of a method are the same draw, and
+"samples needed for N unique" is exact rather than extrapolated. Ten parallel sampling runs of our own grammar are
+going now (the sampler is 21 minutes for 1000 valid structures single-process, so ten seeds give 10,000).
