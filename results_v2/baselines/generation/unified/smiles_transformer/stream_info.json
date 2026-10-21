@@ -1,0 +1,6 @@
+{
+ "method": "smiles_transformer",
+ "n_requested": 20000,
+ "n_drawn": 20000,
+ "seconds": 2402.281148672104
+}

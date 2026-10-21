@@ -41,6 +41,10 @@ import bl_data as D                                                             
 import torch                                                                         # noqa: E402
 import torch.nn as nn                                                                # noqa: E402
 
+# these graphs have tens of nodes; torch's default thread pool costs far more than it saves and several arms run
+# side by side, so one thread per process is both faster and neighbourly
+torch.set_num_threads(1)
+
 ap = argparse.ArgumentParser()
 ap.add_argument('--arm', default='conn')
 ap.add_argument('--seeds', default='1-10')
@@ -261,6 +265,11 @@ class ConnGNN(nn.Module):
 
 GRID = [dict(hid=h, layers=L, dropout=d, lr=lr)
         for h in (64, 128) for L in (2, 3) for d in (0.0, 0.2) for lr in (1e-3,)]
+if os.environ.get('CONN_FIXED'):
+    # one fixed configuration, no search: the published model selects over two settings per arm, so a comparison
+    # against it with an eight-point grid gives this architecture a larger search. This is the modal selection
+    # (hid 128, 3 layers, no dropout); with it the only thing validation still chooses is the epoch.
+    GRID = [dict(hid=128, layers=3, dropout=0.0, lr=1e-3)]
 
 
 def run_one(bt, bv, bte, y, tr, va, te, cfg, seed):

@@ -1,0 +1,6 @@
+{
+ "method": "graph_ga_uncond",
+ "n_requested": 20000,
+ "n_drawn": 20000,
+ "seconds": 114.99021482467651
+}

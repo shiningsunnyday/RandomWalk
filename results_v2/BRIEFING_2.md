@@ -1099,3 +1099,57 @@ reported at their original budget and cannot be said to have *failed* protocol (
 parallel runs of `gen.py random`, cleaned by `clean_random.py`, which re-derives each walk's motif-graph edges the
 same way `gen.py record()` does; 368 of the 10,000 fail to rebuild from the walk string alone and are counted
 invalid, which makes our Valid a floor rather than a point estimate.
+
+---
+
+## 11. Your item 1: connection-aware features work, and they are the best predictor we have
+
+**0.421 MAE against the published 0.461, significant on 60 paired cells (t = 2.27), and the ablation says it is the
+connection-awareness doing it.** This is the first change all campaign that beats the published configuration on
+MAE *and* survives being taken apart.
+
+| arm, K = 10, bl_data splits | MAE ↓ | R² ↑ | paired ΔMAE vs `base` |
+|---|---|---|---|
+| `base` — published, one 2048-bit fingerprint per motif | 0.461 | 0.342 | — |
+| `conn_nored` — per-atom features, **no red term** | 0.446 | 0.380 | −0.014 (t = 0.90) |
+| `conn_fp` — the new architecture on the **published fingerprint** | 0.441 | 0.399 | −0.020 (t = 1.10) |
+| `conn_redall` — red message, but over **all** the motif's red atoms | 0.433 | 0.401 | −0.028 (t = 1.71) |
+| **`conn` — red message over the atoms that bond consumes** | **0.421** | 0.409 | **−0.039 (t = 2.27)** |
+| `conn_fixed` — the same, one fixed config, no grid | 0.426 | **0.432** | −0.034 (t = 2.00) |
+| `conn_nored_fixed` — its no-red control | 0.450 | 0.379 | −0.011 (t = 0.62) |
+
+**The decisive comparison is internal, not against `base`.** `conn` versus `conn_nored` is **−0.025 at t = 3.21**,
+and at matched fixed configuration `conn_fixed` versus `conn_nored_fixed` is **−0.023 at t = 2.87**. The red-part
+message is carrying the effect, and it carries it in both the searched and the unsearched setting.
+
+**Where the gain comes from, in two halves of about 0.02 each.** Architecture first: `conn_fp` is the same message
+passing on the published fingerprint and reaches 0.441, so a fifth of the way is the DAG message passing itself
+(t = 1.10, not significant alone). Then the encoder: `conn` over `conn_fp` is a further −0.020 (t = 1.79). And
+inside the red term, knowing *which atoms are red* buys −0.013 (t = 1.64) and knowing *which red group this
+particular bond consumes* a further −0.012 (t = 1.49). No single piece clears significance by itself; the stack
+does, which is the honest way to report it.
+
+**This reconciles with §6c, which is the part I find most interesting.** Whole-motif pretrained embeddings *lost* to
+the fingerprint at t ≈ 4, and I concluded the node-feature channel was saturated because `mol_feats` is constant
+across polymers — an embedding table, not a description. That conclusion was right and is exactly why this works:
+per-atom pretrained features are not a node feature at all here. They are only ever consumed through
+connection-specific pooling, so the pretrained chemistry becomes useful precisely when the architecture can ask
+"what do *these particular atoms* look like". A better description of a motif cannot beat already knowing which
+motif it is; a description of the atoms a bond consumes answers a question the old model could not even pose.
+
+**The caveat I tested rather than asserted.** My harness selects over an eight-point grid while a campaign arm
+selects over two settings, so the comparison with `base` gave this architecture a larger search. `conn_fixed` is a
+single configuration (hidden 128, 3 layers, no dropout — the modal selection) with validation choosing only the
+epoch: 0.426 and still t = 2.00 against `base`. The grid was worth 0.005 MAE. The ablation ladder was grid-matched
+throughout and so was never affected.
+
+**Where this leaves the predictor.** 0.421 is the best MAE in the campaign — ahead of `huber05` (0.431),
+`strat_struct` (0.437) and `log` (0.452) — and it is **0.009 from polyBERT + ridge (0.412)**, the baseline that has
+beaten us from the start. That gap was 0.049 this morning. It also has the campaign's best R² outside the log
+target (0.432 at fixed config). Two things I have *not* done and would do next: combine it with `huber05` or the
+log target, which are orthogonal changes to the loss and the target, and give `base` the same eight-point search so
+the headline comparison is search-matched in both directions. Its V is worse than `base` (0.585 against 0.525), so
+if we adopt it the stability argument in §6b still wants the log target on top.
+
+**Code.** `campaign/atom_feats.py` (pretrained GIN, per-atom, with the red/black masks) and `campaign/conn_gnn.py`
+(the model, the ablation flags and the protocol). Nothing in `code/` or `campaign/code/` was touched.

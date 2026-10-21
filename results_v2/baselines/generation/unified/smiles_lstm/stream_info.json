@@ -1,0 +1,6 @@
+{
+ "method": "smiles_lstm",
+ "n_requested": 20000,
+ "n_drawn": 20000,
+ "seconds": 939.5570876598358
+}
