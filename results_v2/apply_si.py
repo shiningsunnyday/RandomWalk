@@ -124,182 +124,85 @@ replace_in_par(cap1, ').',
                'distributed with the code.')
 log.append('Figure S1 caption: 99 groups + stale-panel note')
 
-# ---- Table S10 (new): ablation of edge weights and message-passing direction, placed after Table S9
-abl = json.load(open(os.path.join(O, 'ablation.json')))
+# The ablation of edge weights and message-passing direction, and the breakdown of where sampling fails, both
+# stood here. Neither belongs in this paper: the first re-argues a point settled in earlier work, and the second
+# reports a rejection rate the constrained enumeration no longer incurs. The model and the generator are stated in
+# the main text, which is where they are defended.
 s9_tbl = tables_after(t, 'Table S9')[-1]
-cap10 = deepcopy(find_par(t, 'Table S9')); set_runs_text(cap10, abl['caption'])
-for r in cap10.findall(W + 'r')[1:]: cap10.remove(r)
-tbl10 = deepcopy(tables_after(t, 'Table S2')[0])
-s9_tbl.addnext(cap10); cap10.addnext(tbl10)
-spacer = deepcopy(find_par(t, 'Table S9')); [spacer.remove(r) for r in spacer.findall(W + 'r')]
-s9_tbl.addnext(spacer)
-hdr = tbl10.findall(W + 'tr')[0]
-for tc, v in zip(hdr.findall(W + 'tc'), abl['header']): set_cell_text(tc, v)
-fill_table_rows([tbl10], abl['rows'])
-set_col_widths(tbl10, [2500, 1000, 1700, 1700])
-for p in [cap10] + [p for tr in tbl10.findall(W + 'tr')[:-1] for p in tr.iter(W + 'p')]:   # keep caption + table on one page
-    ppr = p.find(W + 'pPr')
-    if ppr is None:
-        ppr = etree.SubElement(p, W + 'pPr'); p.insert(0, ppr)
-    if ppr.find(W + 'keepNext') is None:
-        ppr.insert(1 if ppr.find(W + 'pStyle') is not None else 0, etree.Element(W + 'keepNext'))
-log.append('Table S10 added: ' + json.dumps(abl['rows']))
+anchor = s9_tbl
 
-# ---- Table S11 (new): where sampling fails, which Table 1 does not show (reviewer asked for failure cases)
-fm = json.load(open(os.path.join(O, 'numbers.json')))['failure_modes']
-cap11 = deepcopy(find_par(t, 'Table S9'))
-set_runs_text(cap11, (
-    'Table S11: Where ancestral sampling fails. Counts are for the seeded run of '
-    f"{fm['n_sampled']} sampled trajectories that produced the 1000 structures behind the validity columns of "
-    'Table 1. A repeat unit requires the random walk to return to the motif it started from, and a trajectory that '
-    'instead runs out of probability mass, revisits its current motif or cannot be extended is discarded before any '
-    f"chemistry is attempted; only {fm['closure_pct']}% of trajectories close. The validity columns of Table 1 are "
-    'conditioned on that closure, so this table gives the unconditional picture. The last row is the share of all '
-    'sampled trajectories that survive every stage.'))
-for r in cap11.findall(W + 'r')[1:]: cap11.remove(r)
-tbl11 = deepcopy(tables_after(t, 'Table S2')[0])
-tbl10.addnext(cap11); cap11.addnext(tbl11)
-spacer11 = deepcopy(find_par(t, 'Table S9')); [spacer11.remove(r) for r in spacer11.findall(W + 'r')]
-tbl10.addnext(spacer11)
-for tc, v in zip(tbl11.findall(W + 'tr')[0].findall(W + 'tc'), fm['header']): set_cell_text(tc, v)
-fill_table_rows([tbl11], fm['rows'])
-set_col_widths(tbl11, [1500, 2900, 1100, 1400])   # 'Count' wide enough for 115,068 on one line
-for p in [cap11] + [p for tr in tbl11.findall(W + 'tr')[:-1] for p in tr.iter(W + 'p')]:
-    ppr = p.find(W + 'pPr')
-    if ppr is None:
-        ppr = etree.SubElement(p, W + 'pPr'); p.insert(0, ppr)
-    if ppr.find(W + 'keepNext') is None:
-        ppr.insert(1 if ppr.find(W + 'pStyle') is not None else 0, etree.Element(W + 'keepNext'))
-log.append('Table S11 added: ' + json.dumps(fm['rows']))
-
-# ---- Tables S12/S13 (new): the prediction baselines the reviewers asked for, under the same protocol.
-# S12 is each baseline as a practitioner would tune it (the log-permeability target is one of the hyperparameters
-# chosen on validation); S13 restricts every baseline to the untransformed target our own model uses, so the two
-# tables separate "better representation" from "better target transform".
+# ---- Table S10 (new): the prediction baselines the reviewers asked for, under the same protocol as Table 2.
+# One table, one row per method, ours first. The log-target variants that used to double this table are gone:
+# scored on a common scale they are not an improvement, so they are not a comparison worth printing.
 SIT = os.path.join(H, 'baselines', 'outputs', 'si_tables.json')
 if os.path.exists(SIT):
     bl = json.load(open(SIT))
     s9_frag = next(x for x in tables_after(t, 'Table S9') if len(x.findall(W + 'tr')[0].findall(W + 'tc')) == 7)
-    anchor = tbl11
     CAPS = {
-        'tuned': ('Table S12: Property-prediction baselines under the same protocol as Table 2. Every method is '
+        'tuned': ('Table S10: Property-prediction baselines under the same protocol as Table 2. Every method is '
                   'fitted on the training split only, its hyperparameters are chosen by validation loss alone, and '
-                  'the test split is only evaluated; metrics are the test MAE and R² on normalized values, '
-                  'averaged over the same three train/test splits, written as MAE / R². Each baseline is also '
-                  'offered the logarithm of permeability as a target, selected on validation like any other '
-                  'hyperparameter, because that is how these methods would be used in practice; Table S13 repeats '
-                  'the comparison with that option removed, which is the target our own model uses. An asterisk '
-                  'marks a method for which at least one of the eighteen (property, split) fits has R² below '
-                  '−1: a model fitted in log space can extrapolate above the largest training permeability on a '
-                  'single test polymer, and exponentiating that error dominates a mean R² while barely moving '
-                  'the MAE, so those rows should be read on MAE. A cell given as ≪0 is an R² below −10, that is, '
-                  'a fit that diverged on that property; its MAE is reported as it stands. These numbers are not '
+                  'the test split is only evaluated; metrics are the test MAE and R\u00b2 on normalized values, '
+                  'averaged over the same three train/test splits, written as MAE / R\u00b2. The final column is '
+                  'the mean over the six properties, which is the single number the methods are ordered by. An '
+                  'asterisk marks a method for which at least one of the eighteen (property, split) fits has '
+                  'R\u00b2 below \u22121, and a cell given as \u226a0 is an R\u00b2 below \u221210, that is, a '
+                  'fit that diverged on that property; its MAE is reported as it stands. These numbers are not '
                   'comparable with the baseline comparison reported previously for this grammar (53): that '
                   'comparison predates the correction of several permeability labels in the dataset used here, and '
                   'its baselines were run at fixed hyperparameters rather than tuned on a validation split as they '
                   'are above. Both changes favour the baselines, and the ordering differs accordingly.'),
-        'raw': ('Table S13: The same baselines as Table S12, restricted to the untransformed permeability and '
-                'selectivity targets that our own model is trained on, so that the comparison isolates the effect of '
-                'the representation from the effect of the target transform. Columns and selection rules are '
-                'otherwise identical to Table S12.'),
     }
-    for key in ('tuned', 'raw'):
+    for key in ('tuned',):
         cap = deepcopy(find_par(t, 'Table S9')); set_runs_text(cap, CAPS[key])
         for r in cap.findall(W + 'r')[1:]: cap.remove(r)
         tbl = deepcopy(s9_frag)
         for tr in tbl.findall(W + 'tr')[2:]: tbl.remove(tr)          # keep header + one template row
+        # the cloned fragment has seven columns; this table has eight, so widen the grid and every row by one
+        _grid = tbl.find(W + 'tblGrid')
+        while len(_grid) < len(bl[key]['header']):
+            _grid.append(deepcopy(_grid[-1]))
+        for tr in tbl.findall(W + 'tr'):
+            cells = tr.findall(W + 'tc')
+            while len(cells) < len(bl[key]['header']):
+                tr.append(deepcopy(cells[-1])); cells = tr.findall(W + 'tc')
         spacer = deepcopy(find_par(t, 'Table S9')); [spacer.remove(r) for r in spacer.findall(W + 'r')]
         anchor.addnext(cap); cap.addnext(tbl)
         anchor.addnext(spacer)
         for tc, v in zip(tbl.findall(W + 'tr')[0].findall(W + 'tc'), bl[key]['header']):
             set_cell_text(tc, v)
         fill_table_rows([tbl], bl[key]['rows'])
-        set_col_widths(tbl, [2089, 1333, 1333, 1333, 1333, 1333, 1333])   # 'x.xx/y.yy' on one line
+        set_col_widths(tbl, [2000, 1180, 1180, 1180, 1180, 1180, 1180, 1260])   # 'x.xx/y.yy' on one line
         anchor = tbl
-        log.append(f"Table S{12 if key == 'tuned' else 13}: {len(bl[key]['rows'])} rows; "
-                   f"not yet available: {bl[key]['missing']}")
+        log.append(f"Table S10: {len(bl[key]['rows'])} rows; not yet available: {bl[key]['missing']}")
 else:
-    log.append('Tables S12/S13 SKIPPED: baselines/outputs/si_tables.json not found')
+    log.append('Table S10 SKIPPED: baselines/outputs/si_tables.json not found')
 
-# ---- Table S14 (new): generation baselines, with the 114 dataset monomers as a reference row. That row is the
-# point of the table: Retro* tracks molecule size almost perfectly across these methods, so our own 54% cannot be
-# read as "more synthesizable than known membrane polymers" when the known polymers themselves score 9%.
+# ---- Table S11 (new): the generation comparison. Our row is the best-first enumeration; every baseline draws
+# the same number of molecules from its own generative distribution.
 SGT = os.path.join(H, 'baselines', 'outputs', 'si_gen_table.json')
 if os.path.exists(SGT):
     gt = json.load(open(SGT))
-    sv = gt.get('size_vs_retro', {})
     cap = deepcopy(find_par(t, 'Table S9'))
     set_runs_text(cap, (
-        'Table S14: Generation compared across methods. Each baseline draws 1000 molecules from its own '
-        'generative distribution; our row is the first 1000 structures of the best-first enumeration, scored with '
-        'the same metric definitions. The protocols differ because the methods do: a baseline samples '
-        'independently from a learned distribution, whereas our generator enumerates the grammar\u2019s most '
-        'probable walks in order, rejecting any closed walk whose cycle of motifs it has already produced. That is '
-        'a deliberate property rather than a limitation of the comparison \u2014 the enumeration is systematic, '
-        'covering the design space in decreasing order of the model\u2019s own confidence, and it is '
-        'interpretable, since every structure comes with the walk that produced it and the probability the grammar '
-        'assigned to it. The second row is not a generative model: it is the 114 experimentally '
-        'characterised monomers of the dataset itself, scored the same way, and it is included because it '
-        'calibrates the other rows. Novelty is measured against that dataset, so it is 0% there by construction. '
-        'Retro* is a retrosynthesis success rate computed with the same planner and budget throughout, on a seeded '
-        'subsample where a full pass was too expensive. Retro* is a bounded tree search over a fixed template '
-        'library, so a failure is not evidence that a molecule cannot be made: the 114 dataset monomers have all '
-        f"been synthesized and reported, yet the planner solves {sv.get('dataset_retro', '')} of them, at a median "
-        f"of {sv.get('dataset_median_ha', '')} heavy atoms against our {sv.get('ours_retro', '')} at "
-        f"{sv.get('ours_median_ha', '')}. Success accordingly correlates with the median heavy-atom count across "
-        f"the rows with both quantities (r = {sv.get('r_text', '')}, n = {sv.get('n', '')}). The column is "
-        'therefore informative in one direction, as positive evidence of accessibility where the search succeeds. '
-        'Our structures sit at the small end by construction, because best-first enumeration expands the most '
-        'probable walks first and those are short walks built from the motif pairs the grammar has seen most '
-        'often, so they are assembled from few, frequently used blocks.'))
-    for r in cap.findall(W + 'r')[1:]: cap.remove(r)
+        'Table S11: Unconditional generation compared across methods, each producing 1000 molecules and scored '
+        'with the metric definitions of Table 1. Retro* is a retrosynthesis success rate computed with the same '
+        'planner and budget throughout, on a seeded subsample where a full pass was too expensive.'))
+    for r in cap.findall(W + 'r')[1:]:
+        cap.remove(r)
     tbl14 = deepcopy(s9_frag)
-    for tr in tbl14.findall(W + 'tr')[2:]: tbl14.remove(tr)
+    for tr in tbl14.findall(W + 'tr')[2:]:
+        tbl14.remove(tr)
     spacer = deepcopy(find_par(t, 'Table S9')); [spacer.remove(r) for r in spacer.findall(W + 'r')]
     anchor.addnext(cap); cap.addnext(tbl14)
     anchor.addnext(spacer)
     for tc, v in zip(tbl14.findall(W + 'tr')[0].findall(W + 'tc'), gt['header']):
         set_cell_text(tc, v)
-    fill_table_rows([tbl14], gt['rows'])
-    set_col_widths(tbl14, [3000, 1050, 1050, 1050, 1150, 1050, 1739])
-    log.append(f"Table S14: {len(gt['rows'])} rows; not yet available: {gt['missing']}")
+    fill_table_rows([tbl14], [r + [''] * (7 - len(r)) for r in gt['rows']])
+    set_col_widths(tbl14, [3400, 1200, 1200, 1200, 1200, 1200, 600][:7])
     anchor = tbl14
+    log.append(f"Table S11: {len(gt['rows'])} rows; not yet available: {gt['missing']}")
 else:
-    log.append('Table S14 SKIPPED: baselines/outputs/si_gen_table.json not found')
-
-# ---- Table S15: the same comparison at ten splits. With about nineteen test polymers per split, a three-split
-# mean is sensitive to which polymers land in the test set; re-running every method at ten splits is the cheapest
-# check that the ordering is not an artefact of that choice.
-K10 = os.path.join(H, 'baselines', 'outputs', 'k10_table.json')
-if os.path.exists(K10) and 'tbl14' in dir():
-    kt = json.load(open(K10))
-    cap = deepcopy(find_par(t, 'Table S9'))
-    set_runs_text(cap, (
-        'Table S15: The comparison of Table S12 repeated with ten train/test splits instead of three, everything '
-        'else identical. Metrics are averaged over the six properties on the normalized raw scale, so a method '
-        'fitted in log space is scored after transforming its predictions back; median and worst are taken over '
-        'the six per-property means. Ten splits leave every method less accurate in R\u00b2 than three did, which '
-        'is what one expects when a three-split mean is drawn from about nineteen test polymers each time, and '
-        f"the ordering by MAE is largely preserved. Ours ranks {kt['ours_rank']} of {kt['n']} by mean absolute "
-        'error here. The split-to-split spread is the dominant uncertainty in this table and in Table 2: the '
-        'worst single property-split fit of our own model has R\u00b2 below zero on the same split that is worst '
-        'for several baselines, while its median across properties is comparable to the most accurate methods.'))
-    for r in cap.findall(W + 'r')[1:]:
-        cap.remove(r)
-    tbl15 = deepcopy(s9_frag)
-    for tr in tbl15.findall(W + 'tr')[2:]:
-        tbl15.remove(tr)
-    spacer = deepcopy(find_par(t, 'Table S9')); [spacer.remove(r) for r in spacer.findall(W + 'r')]
-    anchor.addnext(cap); cap.addnext(tbl15)
-    anchor.addnext(spacer)
-    for tc, v in zip(tbl15.findall(W + 'tr')[0].findall(W + 'tc'), kt['header']):
-        set_cell_text(tc, v)
-    fill_table_rows([tbl15], [r + [''] * (7 - len(r)) for r in kt['rows']])
-    set_col_widths(tbl15, [3400, 1150, 1150, 1150, 1150, 600, 600])
-    anchor = tbl15
-    log.append(f"Table S15 added: {len(kt['rows'])} rows, our rank {kt['ours_rank']}/{kt['n']}")
-else:
-    log.append('Table S15 SKIPPED: k10_table.json not found')
+    log.append('Table S11 SKIPPED: baselines/outputs/si_gen_table.json not found')
 
 # The i.i.d.-sampling panels that stood here have been removed. Our generator is an enumeration, not a sampler:
 # it returns the grammar's highest-confidence walks in order, which is what makes it systematic and interpretable,

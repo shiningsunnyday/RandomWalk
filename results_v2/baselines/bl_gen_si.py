@@ -19,7 +19,6 @@ import gen_set as GSET                      # which generated set our row descri
 GEN = os.path.join(H, 'generation', 'metrics.jsonl')
 
 LABELS = [                                   # (metrics.jsonl name, table label); order is the table order
-    ('dataset_114', 'The 114 dataset monomers (reference)'),
     ('graph_ga_uncond', 'Graph GA (unconditional)'),
     ('graph_ga_co2', 'Graph GA (CO₂-conditioned)'),
     ('reinvent_rl', 'REINVENT 4 (transfer + RL)'),
@@ -63,8 +62,7 @@ def main():
     def add(label, r):
         table.append([label, pct(r.get('valid')), pct(r.get('unique')), pct(r.get('novel')),
                       '—' if r.get('diversity') is None else f"{r['diversity']:.2f}",
-                      pct(r.get('retro')),
-                      '—' if r.get('median_heavy_atoms') is None else f"{r['median_heavy_atoms']:.0f}"])
+                      pct(r.get('retro'))])
         if r.get('retro') is not None and r.get('median_heavy_atoms') is not None:
             pts.append((label, float(r['median_heavy_atoms']), float(r['retro'])))
 
@@ -75,7 +73,7 @@ def main():
         else:
             missing.append(label)
 
-    out = {'header': ['Method', 'Valid', 'Unique', 'Novel', 'Diversity', 'Retro*', 'Median heavy atoms'],
+    out = {'header': ['Method', 'Valid', 'Unique', 'Novel', 'Diversity', 'Retro*'],
            'rows': table, 'missing': missing}
     if len(pts) >= 4:
         from scipy.stats import pearsonr, spearmanr

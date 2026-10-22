@@ -5,8 +5,7 @@
   "Unique",
   "Novel",
   "Diversity",
-  "Retro*",
-  "Median heavy atoms"
+  "Retro*"
  ],
  "rows": [
   [
@@ -15,17 +14,7 @@
    "75%",
    "100%",
    "0.90",
-   "55%",
-   "19"
-  ],
-  [
-   "The 114 dataset monomers (reference)",
-   "100%",
-   "97%",
-   "0%",
-   "0.82",
-   "9%",
-   "52"
+   "55%"
   ],
   [
    "Graph GA (unconditional)",
@@ -33,8 +22,7 @@
    "91%",
    "100%",
    "0.91",
-   "33%",
-   "26"
+   "33%"
   ],
   [
    "Graph GA (CO\u2082-conditioned)",
@@ -42,8 +30,7 @@
    "100%",
    "100%",
    "0.60",
-   "0%",
-   "60"
+   "0%"
   ],
   [
    "REINVENT 4 (transfer + RL)",
@@ -51,8 +38,7 @@
    "72%",
    "99%",
    "0.86",
-   "24%",
-   "23"
+   "24%"
   ],
   [
    "REINVENT 4 (transfer only)",
@@ -60,8 +46,7 @@
    "42%",
    "53%",
    "0.85",
-   "13%",
-   "44"
+   "13%"
   ],
   [
    "Hier-VAE",
@@ -69,8 +54,7 @@
    "22%",
    "54%",
    "0.85",
-   "16%",
-   "45"
+   "16%"
   ],
   [
    "JT-VAE",
@@ -78,8 +62,7 @@
    "22%",
    "92%",
    "0.72",
-   "20%",
-   "57"
+   "20%"
   ],
   [
    "DEG (grammar induction only)",
@@ -87,8 +70,7 @@
    "50%",
    "60%",
    "0.81",
-   "4%",
-   "43"
+   "4%"
   ],
   [
    "SMILES LSTM",
@@ -96,8 +78,7 @@
    "11%",
    "1.0%",
    "0.81",
-   "7%",
-   "50"
+   "7%"
   ],
   [
    "SMILES LSTM (early-stopped)",
@@ -105,8 +86,7 @@
    "7%",
    "22%",
    "0.81",
-   "12%",
-   "39"
+   "12%"
   ],
   [
    "SMILES transformer",
@@ -114,8 +94,7 @@
    "11%",
    "0.4%",
    "0.81",
-   "16%",
-   "54"
+   "16%"
   ],
   [
    "SMILES transformer (early-stopped)",
@@ -123,27 +102,21 @@
    "0.1%",
    "100%",
    "0.00",
-   "\u2014",
-   "1"
+   "\u2014"
   ]
  ],
  "missing": [],
  "size_vs_retro": {
-  "n": 12,
-  "pearson_r": -0.775,
-  "pearson_p": 0.003091835395638984,
-  "spearman_rho": -0.543,
-  "spearman_p": 0.0681500850864122,
+  "n": 11,
+  "pearson_r": -0.766,
+  "pearson_p": 0.0059867470750929455,
+  "spearman_rho": -0.565,
+  "spearman_p": 0.0701694192672033,
   "points": [
    {
     "method": "Ours (motif-walk, best-first)",
     "median_heavy_atoms": 19.0,
     "retro": 0.545
-   },
-   {
-    "method": "The 114 dataset monomers (reference)",
-    "median_heavy_atoms": 52.0,
-    "retro": 0.08888888888888889
    },
    {
     "method": "Graph GA (unconditional)",

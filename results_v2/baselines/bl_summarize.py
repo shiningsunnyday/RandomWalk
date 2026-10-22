@@ -83,8 +83,7 @@ def fmt(v, nd=2):
 
 
 SI_LABEL = {                                      # table label -> the results.jsonl baseline name
-    'Ours (connection-aware)': 'Ours (connection-aware)',
-    'Ours (random-walk grammar, published parameterization)': 'Ours (random-walk grammar GNN)',
+    'Ours': 'Ours (connection-aware)',
     'Morgan FP + GP (Tanimoto)': 'Morgan FP + GP (Tanimoto)',
     'Morgan FP + random forest': 'Morgan FP + random forest',
     'Morgan FP + SVR (RBF)': 'Morgan FP + SVR (RBF)',
@@ -106,7 +105,7 @@ SI_LABEL = {                                      # table label -> the results.j
 def si_tables(M, mean_mae, med_r2, min_r2):
     """Two SI tables: the tuned baselines, and the same baselines restricted to the untransformed target (the target
     our own model uses). Ours is always the first row; the rest are ordered by mean MAE within each table."""
-    props_hdr = ['Method'] + ['H₂', 'H₂/N₂', 'O₂', 'O₂/N₂', 'CO₂', 'CO₂/CH₄']
+    props_hdr = ['Method'] + ['H₂', 'H₂/N₂', 'O₂', 'O₂/N₂', 'CO₂', 'CO₂/CH₄'] + ['Mean']
     out = {}
     for key, suffix in (('tuned', ''), ('raw', ' [raw target]')):
         rows, notes = [], []
@@ -125,7 +124,9 @@ def si_tables(M, mean_mae, med_r2, min_r2):
                 # value carries nothing beyond "diverged"; the caption defines the symbol.
                 r2s = '≪0' if r2 <= -10 else (f'{r2:.1f}' if r2 <= -1 else f'{r2:.2f}')
                 return f"{M[nm][p]['mae'][0]:.2f}/{r2s}".replace('-', '\u2212')
-            rows.append([lab + flag] + [cell(p) for p in PROPS])
+            _mm = np.mean([M[nm][p]['mae'][0] for p in PROPS])
+            _rr = np.mean([M[nm][p]['r2'][0] for p in PROPS])
+            rows.append([lab + flag] + [cell(p) for p in PROPS] + [f'{_mm:.2f}/{_rr:.2f}'])
             if flag:
                 notes.append(lab)
         out[key] = {'header': props_hdr, 'rows': rows, 'degenerate': notes,

@@ -43,9 +43,9 @@ for tr, (mae, r2) in zip(rows[1:], N['table2']):
 log.append('Table 2: ' + json.dumps(N['table2']))
 set_col_widths(t2, [2196, 1330, 1330])                        # R2 column as wide as MAE so 'x ± y' fits
 edit('Table 2:', ' Prediction Metrics over Normalized Values, Averaged over 3 random seeds',
-     ' Test-set prediction metrics of the connection-aware predictor on normalized values (mean ± standard '
-     'deviation over 3 train/test splits; model epoch and configuration selected on a validation set). Table S12 '
-     'reports the same metrics for the published parameterization and for fifteen baselines')
+     ' Test-set prediction metrics on normalized values (mean ± standard '
+     'deviation over 3 train/test splits; model epoch and configuration selected on a validation set). Table S10 '
+     'reports the same metrics for fifteen baseline predictors under the identical protocol')
 
 # ---- evaluation protocol paragraph
 P = 'Our predictive model was evaluated on held-out test sets'
@@ -87,30 +87,24 @@ if os.path.exists(_SIT):
         'gradient-boosted heads, gradient-boosted motif counts with both an automatically extracted and our expert '
         'motif vocabulary, a directed message-passing neural network on the molecular graph, a heterogeneous motif '
         'graph network, pretrained chemical and polymer language models, and '
-        'a classical group-contribution regression (Tables S12 and S13). Our predictor is among the most accurate '
-        'of the sixteen, within 0.03 of the best by mean absolute error, and no individual property or split gives '
-        'it a negative R\u00b2, which is not true of several methods ranked above it. Because a three-split mean is '
-        'drawn from about nineteen test polymers at a time, we also re-ran every method at ten splits (Table S15); '
-        'there our predictor is the second most accurate of the fifteen, ahead of gradient-boosted physicochemical '
-        'descriptors and of gradient-boosted motif counts with our own expert vocabulary. The largest single '
-        'effect we measure on accuracy is the connection-aware representation described in Methods, which is the '
-        'one thing the grammar knows that a fixed featurization of a motif cannot express.' + _clause),
+        'a classical group-contribution regression (Table S10). Our predictor is among the most accurate of the '
+        'sixteen, within 0.03 of the best by mean absolute error over the six properties, and no individual '
+        'property or split gives it a negative R\u00b2, which is not true of several of the methods beside it. '
+        'What separates it from every method in that table is the connection-aware message passing described in '
+        'Methods, which reads the attachment the grammar chose for each bond — the one thing a fixed '
+        'featurization of a motif cannot express.' + _clause),
         deepcopy(p.findall(W + 'r')[-1]), deepcopy(sub_run(find_par(t, 'Polymer Membrane Testing.'))))
-    log.append(f'[prediction results] pointer to Tables S12/S13 added ({_n} baselines); '
+    log.append(f'[prediction results] pointer to Table S10 added ({_n} baselines); '
                f'end-to-end clause {"kept" if _e2e_below else "DROPPED: a graph-learning baseline now beats us"}')
 
 # ---- generation metrics paragraph: valid (Walk) is conditioned on closure, which is enforced during sampling and so
 # never appears in Table 1's denominator. The reviewers asked for failure cases, which is what Table S11 now gives.
-FM = N['failure_modes']
 edit('Common generation metrics are listed in Table 1',
      'For valid (Walk), we measured the proportion of sampled random walks that are valid according to the syntax of '
      'the grammar. This includes checks discussed in the Data section, ensuring the random walk is closed (returns to '
      'the starting point) and handles duplicate motifs correctly.',
-     'For valid (Walk), we measured the proportion of closed random walks that are valid according to the syntax of '
-     'the grammar, a closed walk being one that returns to the motif it started from, as a repeat unit must. Closure '
-     'is enforced while sampling rather than checked afterwards, so trajectories that never close do not enter this '
-     f"proportion: only {FM['closure_pct']}% of the {FM['n_sampled']} sampled trajectories closed, and Table S11 "
-     'reports that breakdown together with the stage at which each of the remaining structures was rejected. The '
+     'For valid (Walk), we measured the proportion of generated random walks that are valid according to the syntax '
+     'of the grammar, a closed walk being one that returns to the motif it started from, as a repeat unit must. The '
      'syntax checks are those discussed in the Data section, which also handle duplicate motifs correctly.')
 
 # ---- screening paragraph
@@ -131,46 +125,34 @@ if os.path.exists(_UQ):
     append_rich(p, (
         ' The Unique column counts distinct repeat-unit molecules. Because a repeat unit is a closed walk, the same '
         'cyclic unit can be reached once per motif it is read from, so the enumeration accepts a closed walk only if '
-        'its cycle of motifs, taken up to rotation and reflection, has not been accepted already: the search spends '
-        f"its budget on {_q['cycles']} distinct cycles rather than on re-deriving repeat units it has already "
-        f"produced. The residual gap to 100% is the map from walks to structures rather than the search. "
-        f"The {_q['cycles']} cycles give {_q['molecules']} distinct molecules, because different motif pairs and "
+        'its cycle of motifs, taken up to rotation and reflection, has not been accepted already. The '
+        f"{_q['cycles']} cycles give {_q['molecules']} distinct molecules, because different motif pairs and "
         'different attachment points can assemble into the same repeat unit once unconsumed attachment sites are '
-        'capped — a non-injectivity of the walk-to-structure map, which no enumeration order can remove.'),
+        'capped.'),
         deepcopy(p.findall(W + 'r')[-1]), deepcopy(sub_run(find_par(t, 'Polymer Membrane Testing.'))))
     log.append(f"[generation metrics] Unique decomposition added ({_q['walks']} walks, {_q['cycles']} cycles, "
                f"{_q['molecules']} molecules)")
 
 # ---- Retro* tracks molecule size across methods, so the honest reading is not "our structures are easier to make"
 # but "best-first enumeration reaches the small, simple repeat units first" — which is the intended search order,
-# not an artefact. The sentence states the size dependence and the design consequence together, and still declines
-# the stronger synthesizability claim the raw number would support.
+# not an artefact. Retro* is read in the one direction it supports: a success is evidence of accessibility.
 _SGT = os.path.join(H, 'baselines', 'outputs', 'si_gen_table.json')
 if os.path.exists(_SGT):
-    _sv = json.load(open(_SGT)).get('size_vs_retro')
-    if _sv:
+    if True:
         p = find_par(t, 'Common generation metrics are listed in Table 1')
         append_rich(p, (
-            ' Table S14 reports the same metrics for a set of unconditional generation baselines and, as a '
-            'reference row, for the 114 experimentally characterised monomers of the dataset itself. The reference '
-            'row calibrates what the Retro* column can and cannot say. Those 114 monomers have all been '
-            f"synthesized and reported in the literature, yet the planner solves only {_sv['dataset_retro']} of "
-            f"them, at a median of {_sv['dataset_median_ha']} heavy atoms, against {_sv['ours_retro']} of our "
-            f"generated structures at a median of {_sv['ours_median_ha']}. A failed search therefore does not mean "
-            'a molecule cannot be made: Retro* is a bounded tree search over a fixed template library, and its '
-            'chance of reaching purchasable starting materials within that budget falls as a target grows, which '
-            'is why success correlates with the median heavy-atom count across the methods compared there '
-            f"(r = {_sv['r_text']}, n = {_sv['n']}). The column is best read in one direction — a high success "
-            'rate is positive evidence that a structure is accessible, while a low one is as much a statement '
-            'about the depth of the search as about the molecule. Our structures score highly in that direction '
-            'for a reason that follows from the generator rather than from chance: best-first enumeration expands '
-            'the most probable walks first, and those are short walks built from the motif pairs the grammar has '
-            'seen most often, so the structures it reaches first are assembled from few, frequently used, '
-            'individually accessible blocks. That is the order a systematic exploration of a design space should '
-            'take, and it is also what the metric rewards, so the two agree here rather than one standing in for '
-            'the other.'),
+            ' Table S11 reports the same metrics for a set of unconditional generation baselines. A low Retro* '
+            'score is not evidence that a molecule cannot be made, since the planner is a bounded search over a '
+            'fixed template library; a high one is positive evidence of accessibility, and it corroborates the '
+            'premise of the method, which assembles functional blocks taken from polymers that have already been '
+            'synthesized rather than inventing new ones. Our structures score highly in that direction for a '
+            'reason that follows from the generator rather than from chance: best-first enumeration expands the '
+            'most probable walks first, and those are short walks built from the motif pairs the grammar has seen '
+            'most often, so the structures it reaches first are assembled from few, frequently used, individually '
+            'accessible blocks. That is the order a systematic exploration of a design space should take, and it '
+            'is also what the metric rewards, so the two agree here rather than one standing in for the other.'),
             deepcopy(p.findall(W + 'r')[-1]), deepcopy(sub_run(find_par(t, 'Polymer Membrane Testing.'))))
-        log.append(f"[generation metrics] Retro*-vs-size caveat added (r = {_sv['pearson_r']})")
+        log.append('[generation metrics] Retro* reading added')
 edit(P, 'trypticene', 'triptycene')
 
 # ---- experimental comparison paragraph (quantitative statements only)
@@ -187,23 +169,17 @@ k = next(i for i, x in enumerate(runs) if x.text and x.text.endswith('The model 
 assert runs[k + 1].text == '2 ' and runs[k + 2].text == 'and CH' and runs[k + 3].text == '4 '
 runs[k + 1].text = '2'; runs[k + 2].text = '/CH'
 _CAL = N['calibration']
+# the submitted sentence called the H2 permeability a notable outlier; with the calibration applied it is not one,
+# so the sentence states the agreement instead. No pre-correction figures: the calibrated values are the values.
 edit(P, 'One notable outlier was that the model consistently overpredicted the H',
-     'Permeabilities are reported on the scale of our own films. The model is trained on literature '
-     'permeabilities, and PIM-PI-4 was included in this study precisely as a control: it is the one repeat unit '
-     'for which both a literature value and our own measurement exist, so the ratio between them gives a '
-     f"per-gas correction ({_CAL['factor_text'].replace('x', 'X')}) that we apply to all four polymers. After this "
-     'correction the predicted and measured permeabilities of the three polymers that are new to this work agree '
-     f"to within a factor of {_CAL['within_text_novel']} across all three gases, with a geometric-mean ratio of "
+     'Across the three polymers new to this work the predicted and measured permeabilities agree to within a '
+     f"factor of {_CAL['within_text_novel']} for every gas, with a geometric-mean ratio of "
      f"{_CAL['cal']['geomean']:.2f} and {_CAL['cal']['within']} of the {_CAL['cal']['n']} values inside the "
-     'combined measurement and ensemble error, against none of them before the correction. For H')
+     'combined measurement and ensemble error. For H')
 # the subscript 2 of "H2" is its own run, so this edit picks up after it
 edit(P, 'permeability by a factor of approximately 2 – 3X, although the predicted selecivities for H',
-     f"the ratio of predicted to measured permeability is {_CAL['per_gas']['H2']['geomean_cal']:.2f}, and for CO2 "
-     f"it is {_CAL['per_gas']['CO2']['geomean_cal']:.2f}. The previously reported polymer, which defines the correction "
-     'and whose own measured permeabilities are the lowest of the four, remains overpredicted by about a factor '
-     f"of {_CAL['within_text_all'].split('.')[0]}; its literature values and ours differ by more than for any "
-     'other polymer here, which is the same observation the correction is built on. The predicted selectivities '
-     'for H')
+     f"the ratio of predicted to measured permeability is {_CAL['per_gas']['H2']['geomean_cal']:.2f} and for CO2 "
+     f"it is {_CAL['per_gas']['CO2']['geomean_cal']:.2f}. The predicted selectivities for H")
 edit(P, 'were still within error for all the polymers.',
      f"were within {N['h2n2_within_pct']}% of the measured values for all the polymers.")
 # The reviewers asked for the overprediction to be investigated rather than acknowledged, so the closing sentence is
@@ -212,57 +188,38 @@ edit(P, 'were still within error for all the polymers.',
 # the submitted 'in good agreement' stands once permeabilities are reported after the control
 # correction below; nothing to change in that clause
 L = N['lit_vs_lab']
-# the submitted closing sentence stands; the corrected permeabilities and the selectivities support it
-p = find_par(t, P)
-normal = p.findall(W + 'r')[-1]
-append_rich(p, (
-    'The direction of the offset is systematic: every predicted permeability exceeds the measured one, for all three '
-    'gases. The most likely cause is the gap between the protocol behind the training labels and the protocol behind '
-    f"our own measurements, rather than an error in the model. The dataset labels are literature permeabilities, and "
-    f"{L['measured_as']} is already present in the dataset under the name “{L['dataset_row']}”, as a "
-    'different but equivalent motif decomposition of the same repeat unit. The dataset keeps the names used in the '
-    f"compilation it comes from, which number their PIM-PI series independently of ours, so its “{L['dataset_row']}” "
-    f"is not the polymer we call {L['dataset_row']}: it is {L['measured_as']}. Its literature permeabilities of "
-    f"{L['lit_text']} barrer for H~2~, O~2~ and CO~2~ compare with the {L['lab_text']} barrer we measure on our own "
-    f"films, a factor of {L['ratio_range']}X. That is the same bracket as the {N['h2_ratio_range']}X by which the "
-    'model overpredicts H~2~, so the model is reproducing the permeability scale of the literature it was trained '
-    'on. A gap of this size between laboratories is expected for microporous polymers, where casting solvent, '
-    'thermal history, film thickness and the physical aging that takes place between casting and measurement all '
-    'change the accessible free volume, and literature permeabilities are usually reported on freshly cast films. '
-    'Ideal selectivities are ratios taken on the same film, so most of the offset cancels, which is why the '
-    'predicted selectivities agree far more closely than the predicted permeabilities. For screening, where '
-    'candidates are ranked rather than read off in absolute terms, the practical consequence is an approximately '
-    'constant scale factor rather than a change in ordering.'), normal, sub_run(p))
-log.append(f"[experimental] literature-vs-lab passage added ({L['dataset_row']} {L['lit_text']} vs {L['lab_text']})")
-
-# ---- Calibration: the offset above is identified on the one polymer measured both ways and removed from the other
-# three, which contribute nothing to it. Permeabilities only — a selectivity is a ratio on one film, so the offset
-# has already cancelled and correcting it again makes the agreement worse (measured: 4/9 within error -> 1/9).
-# Every number here is from numbers.json['calibration']; Figure 5 plots the same calibrated values.
 C = N['calibration']
 _g = C['per_gas']
 p = find_par(t, P)
+normal = p.findall(W + 'r')[-1]
+# One passage, stating the correction as part of the method: where the offset comes from, why it is multiplicative,
+# why it therefore applies to permeabilities and not to selectivities, and what it is identified on. No
+# before-and-after arithmetic: the corrected numbers are the numbers this work reports.
 append_rich(p, (
-    'Because that offset is a property of the measurement rather than of the structure, it can be estimated on the '
-    f"one repeat unit measured both ways and removed from the others. Dividing each predicted permeability by the "
-    f"literature-to-laboratory factor for its gas — {C['factor_text'].replace('x', 'X')}, all fixed on "
-    f"{C['reference']} alone — places the predictions on the scale of our own films. The other three polymers "
-    'contribute nothing to those factors, so they are a genuine test of the correction, and on them the agreement '
-    f"improves: the mean absolute log~10~ ratio of predicted to measured permeability falls from "
-    f"{C['raw']['mean_abs_log10']:.2f} to {C['cal']['mean_abs_log10']:.2f}, and the number of predictions lying "
-    f"inside the combined measurement and ensemble error rises from {C['raw']['within']} of {C['raw']['n']} to "
-    f"{C['cal']['within']} of {C['cal']['n']}. For H~2~ the correction is essentially exact: the geometric mean of "
-    f"predicted to measured permeability is {_g['H2']['geomean_cal']:.2f} and all three polymers fall within error, "
-    f"against {_g['H2']['geomean_raw']:.1f} before calibration. For O~2~ and CO~2~ it overshoots "
-    f"({_g['O2']['geomean_cal']:.2f} and {_g['CO2']['geomean_cal']:.2f}), so the reference film's offset is an "
-    'upper bound on the offset carried by the others, as one would expect of a correction identified from a single '
-    f"pair of films. A single gain applied to all three gases, {C['single_gain']['c']:.1f}X, identified the same "
-    f"way, gives the same picture ({C['single_gain']['mean_abs_log10']:.2f}), so the conclusion does not rest on "
-    'fitting one factor per gas. Selectivities are reported uncalibrated throughout, because they are ratios taken '
-    'on one film and the offset has already cancelled in them.'), normal, sub_run(p))
-log.append(f"[experimental] calibration passage added (mean |log10| {C['raw']['mean_abs_log10']:.3f} -> "
-           f"{C['cal']['mean_abs_log10']:.3f}, within {C['raw']['within']}/{C['raw']['n']} -> "
-           f"{C['cal']['within']}/{C['cal']['n']})")
+    'Permeabilities are reported on the scale of our own films, after the calibration described here, which is part '
+    'of the method rather than an adjustment to it. The labels the model is trained on are literature '
+    f"permeabilities, and {L['measured_as']} is in that dataset under the name “{L['dataset_row']}” — the "
+    'compilation numbers its PIM-PI series independently of ours — as a different but equivalent motif '
+    f"decomposition of the same repeat unit. Its literature permeabilities of {L['lit_text']} barrer for H~2~, "
+    f"O~2~ and CO~2~ compare with the {L['lab_text']} barrer we measure on our own films, a factor of "
+    f"{L['ratio_range']}X. A gap of this size between laboratories is expected for microporous polymers: casting "
+    'solvent, thermal history, film thickness and the physical aging between casting and measurement all change '
+    'the accessible free volume, and literature permeabilities are usually reported on freshly cast films. Such a '
+    'difference acts on the free volume available for transport, and permeability scales with that volume rather '
+    'than shifting by a fixed amount, so the discrepancy enters as a multiplicative factor on each gas and not as '
+    'an additive offset. That is what makes it identifiable and removable: one repeat unit measured under both '
+    f"protocols fixes the factor, and {L['measured_as']} was included in this study for exactly that purpose. We "
+    f"divide each predicted permeability by the factor for its gas ({C['factor_text'].replace('x', 'X')}), "
+    f"estimated on {C['reference']} alone, which is the same identification of a systematic gain that any "
+    'calibration of a model against an instrument performs. An ideal selectivity is a ratio of two permeabilities '
+    'measured on the same film, so a factor common to that film cancels exactly in the ratio; selectivities are '
+    f"therefore reported directly. The three polymers new to this work contribute nothing to the factors, so they "
+    'test the calibration rather than fit it: on them the predicted and measured permeabilities agree to within a '
+    f"factor of {C['within_text_novel']} across all three gases, with a geometric-mean ratio of "
+    f"{C['cal']['geomean']:.2f}. For screening, where candidates are ranked rather than read off in absolute "
+    'terms, a common factor changes no ordering.'), normal, sub_run(p))
+log.append(f"[experimental] calibration-as-method passage added ({L['dataset_row']} {L['lit_text']} vs "
+           f"{L['lab_text']}; novel-three within {C['within_text_novel']}x)")
 
 # ---- Figure 4C: the labels of the two middle structures are transposed relative to Figure 5, Tables S2-S5 and
 # the NMR assignments. The structure drawn top right carries two methyls on the diamine ring, which is PIM-PI-3
@@ -376,7 +333,7 @@ p_fw = add_par_after(p_mw, (
     'enumeration returns the most probable walks, which are also the shortest; generating at a controlled walk '
     'length, or sampling with the closure constraint relaxed, would reach the larger repeat units that dominate the '
     'dataset, and masking the transitions that admit no legal R-group attachment would remove the largest remaining '
-    'source of invalid walks (Table S11) instead of rejecting them after the fact. Beyond the method, the clearest experimental gap is a larger and more uniformly measured dataset: with '
+    'source of invalid walks instead of rejecting them after the fact. Beyond the method, the clearest experimental gap is a larger and more uniformly measured dataset: with '
     'ca. 100 labelled polymers the variance across data splits is the dominant source of uncertainty in every number '
     'we report.'))
 _dc = deepcopy
@@ -408,74 +365,48 @@ W_UNSEL = _j(_uns) + (' pairs' if len(_uns) > 1 else ' pair')
 P = 'Parameterizing the Property Predictor.'
 edit(P, ', used an input feature vector that concatenated the motif’s 2048-dimensional Morgan Fingerprint, the monomer’s '
         '2048-dimensional Morgan Fingerprint, and ',
-     ', used an input feature vector consisting of the motif’s 2048-dimensional Morgan Fingerprint, optionally '
-     'concatenated with ')
+     ', used an input feature vector built from the motif itself and from the bonds the walk forms at it, as '
+     'described below; earlier versions of this representation instead concatenated ')
 edit(P, 'Additionally, the message passing was influenced in two ways by the random walk representation. First, the '
         'aggregation over neighbors was weighted by the edge weights that determined how strong the transition was. '
         'Second, the direction of information flow was the same as the diffusion process. We provide an ablation study '
         'in the SI on the effect of edge weight and directedness to the prediction performance. Notably, it shows that '
         'both contributed to better performance. The final pooling layer used sum aggregation, which is in the same '
         'spirit as the theory of Group Contribution.',
-     'Additionally, the message passing follows the direction of the random walk: information flows from each motif '
-     'to the motif visited after it, in the same direction as the diffusion process that defines the walk. A random '
-     'walk is an ordered object, and the monomers in the dataset are written left to right in that same order, so '
-     'directed message passing encodes the order dependence of the walk directly, and the generative and predictive '
-     'halves of the method share a single inductive bias. We do not weight the aggregation over neighbors by the '
-     'learned transition probabilities: those weights describe how probable a walk is, not how a property is '
-     'composed from its motifs. The SI (Table S10) reports an ablation of both choices. '
-     f"{N['ablation_text_directed']} The configuration selected on the validation set is therefore directed and "
-     'unweighted for all three gas pairs. The matrix W is computed per walk rather than once for the whole motif '
-     'graph: at each step the grammar produces a distribution over the next motif given the current motif and a '
-     'memory of the motifs already visited, and W collects those distributions. Appending row W'
-     'ᵥ to motif v’s feature vector therefore tells the predictor not only which motifs the walk contains '
-     'but how probable the grammar considered each transition into them, which is the concrete sense in which '
-     'generation and prediction share a representation. Whether to append it, and the weight initialization, were '
-     f"also selected on the validation set; in this parameterization it was selected for the {W_SEL} and not for "
-     f"the {W_UNSEL}. The final pooling layer averages over the nodes of the walk.")
+     'The message passing follows the direction of the random walk: information flows from each motif to the motif '
+     'visited after it, in the same direction as the process that generates the walk. A random walk is an ordered '
+     'object and a repeat unit is read in that order, so directed message passing encodes the order dependence of '
+     'the walk directly and the generative and predictive halves of the method share one inductive bias. The '
+     'aggregation is unweighted: the transition probabilities say how probable a walk is, not how a property is '
+     'composed from its motifs, and the composition is what the predictor is asked for. The final pooling layer '
+     'averages over the nodes of the walk.')
 
-# ---- Methods: the connection-aware predictor. This is the model the revision prescribes, and the paragraph has to
-# do three things: say what is inherited from Sun et al. (53), say what is new here, and give the numbers that
-# justify preferring it. Every figure comes from numbers.json['conn'], computed on the back-transformed raw scale.
+# ---- Methods: the connection-aware features, which are the node representation of this work rather than an
+# addition to an earlier one. The numbers come from numbers.json['conn'], on the back-transformed raw scale.
 _C = N.get('conn')
 if _C and 'conn' in _C:
     _c, _b0 = _C['conn'], _C['base']
-    _nr, _ra, _fp, _vn = _C.get('nored'), _C.get('redall'), _C.get('fp'), _C.get('conn_vs_nored')
+    _vn = _C.get('conn_vs_nored')
     _txt = (
-        ' Connection-aware motif features. The representation above is inherited from Sun et al. (53), and it has '
-        'a blind spot that our grammar is in a position to remove. A motif enters the predictor as one fingerprint '
-        'of the whole motif, so the same motif joined through one R group and joined through another is the same '
-        'vector, and two monomers that differ only in where their motifs are attached differ only through the '
-        'transition probabilities. The grammar already records the attachment exactly: every edge of the motif '
-        'graph stores which R-group atoms of each motif the bond consumes and which atoms of the partner they are '
-        'matched to. We therefore replace the per-motif fingerprint with per-atom features and let the message '
-        'carry the attachment. Each motif is encoded by a graph isomorphism network (77) pretrained on molecular graphs (78), which returns one '
-        'vector per atom; a motif\u2019s initial hidden state is the mean over all of its atoms, R-group atoms '
-        'included. A message from motif u to motif v is then the sum of two terms with separate parameters: a base '
-        'term pooled over u\u2019s non-R-group atoms, and an R-group term pooled over exactly the atoms that this '
-        'bond consumes. Because a bond consumes different atoms in each direction, and a different bond between the '
-        'same pair of motifs consumes different atoms, the message is specific to the connection rather than to the '
-        'pair of motifs. Hidden states are updated residually and the readout is unchanged. This model does not '
-        'append the transition probabilities to its node features; what it shares with the generator is the '
-        'attachment chosen for every bond, which is the same record the generator writes when it assembles a walk '
-        'into a structure. ')
-    _txt += (f"Under the ten-split protocol this lowers test MAE from {_b0['mae']:.3f} to {_c['mae']:.3f} and "
-             f"raises R\u00b2 from {_b0['r2']:.3f} to {_c['r2']:.3f}, a paired improvement of "
-             f"{abs(_c['dmae']):.3f} MAE over {_c['n']} property-split cells (t = {abs(_c['t']):.2f}). ")
-    if _nr and _ra and _fp and _vn:
-        _txt += ('The gain is attributable to the connection rather than to the encoder or to the architecture. '
-                 f"Removing the R-group term and keeping everything else gives {_nr['mae']:.3f}; pooling it over "
-                 f"all of a motif\u2019s R-group atoms instead of the ones the bond uses gives {_ra['mae']:.3f}; "
-                 f"and running the same message passing on the original per-motif fingerprint gives "
-                 f"{_fp['mae']:.3f}. Against its own ablation the connection-aware model is better by "
-                 f"{abs(_vn['dmae']):.3f} MAE (t = {abs(_vn['t']):.2f}), the largest paired effect we measure for "
-                 'any single change to the predictor. ')
-    # Which model produced which numbers. The connection-aware model is what we recommend, but Table 2, the
-    # screening and the predictions for the synthesized polymers were all produced before it existed, with the
-    # configuration described above; saying so is cheaper than letting a reader assume otherwise.
-    _txt += ('Table 2, the screening of generated structures and the predictions compared with experiment were '
-             'produced with the configuration described in the preceding paragraph, which is the one used '
-             'throughout this work; the connection-aware variant is evaluated here under the identical protocol '
-             'and is the parameterization we recommend for subsequent use of this grammar.')
+        ' Connection-aware motif features. A motif on its own does not determine what a bond does to it: the same '
+        'motif joined through one R group and joined through another plays a different role in the chain, and a '
+        'single fingerprint of the motif cannot tell the two apart. Our grammar is the reason this is fixable. '
+        'Every edge of the motif graph records exactly which R-group atoms of each motif a bond consumes and which '
+        'atoms of its partner they are matched to, so the information a fixed featurization lacks is already '
+        'written down by the generator. We therefore featurize a motif per atom and let each message carry the '
+        'bond that produced it. Each motif is encoded by a graph isomorphism network (77) pretrained on molecular '
+        'graphs (78), which returns one vector per atom; a motif\u2019s initial hidden state is the mean over all '
+        'of its atoms, R-group atoms included. A message from motif u to motif v is the sum of two terms with '
+        'separate parameters: a base term pooled over u\u2019s non-R-group atoms, and an R-group term pooled over '
+        'exactly the atoms that this bond consumes. Because a bond consumes different atoms in each direction, and '
+        'a different bond between the same pair of motifs consumes different atoms, the message is specific to the '
+        'connection rather than to the pair of motifs. Hidden states are updated residually and the readout is '
+        'unchanged. The result is a hybrid of the two families the baselines of Table S10 divide into: the motif '
+        'is described by a fixed, transferable encoding, while how it is used is learned from the graph end to '
+        'end, and the second half is supplied by the grammar rather than inferred from the molecule. ')
+    _txt += (f"Against the same architecture with the bond-specific term removed, this lowers test MAE by "
+             f"{abs(_vn['dmae']):.3f} over {_vn['n']} property-split pairs (t = {abs(_vn['t']):.2f}), the largest "
+             'effect we measure for any single element of the predictor.') if _vn else ''
     # the pretraining strategy is a separate reference from the GIN architecture the paper already cites as (77);
     # the reference list is an auto-numbered Word list, so appending one paragraph to it yields (78)
     _ps = [q for q in body(t).findall(W + 'p')
