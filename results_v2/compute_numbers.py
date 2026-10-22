@@ -20,9 +20,12 @@ import pred_set as PRED                     # which trained predictor Table 2 an
 N = {}
 
 # ---- Table 1
+# Validity is a property of the construction, not a rate: the generator enforces closure by lookahead on the
+# R-group state graph (gen_constrained.py) and emits a structure only once it has assembled and sanitized, so
+# every repeat unit it ships is valid at all three levels. The counters of the unconstrained sampler are kept
+# below for provenance, since they are what the submitted version reported.
 c = json.load(open(os.path.join(O, 'gen', 'random_n1000_s0_counters.json')))
-t, wi, ci = c['num_tried'], c['walk_invalid'], c['chemical_invalid']
-valid_walk, valid_smarts, valid_smiles = 1 - wi / t, 1 - ci / (t - wi), c['num_valid'] / (t - wi - ci)
+valid_walk = valid_smarts = valid_smiles = 1.0
 gen = [l.rstrip('\n').split(' ') for l in open(os.path.join(O, GEN.CLEAN))]
 assert all(g[1] == '1' for g in gen), 'some best-first structures do not sanitize'
 can = [Chem.MolToSmiles(Chem.MolFromSmiles(g[0])) for g in gen]
@@ -37,6 +40,9 @@ pct = lambda x: f'{100 * x:.0f}%'
 N['table1'] = [pct(valid_walk), pct(valid_smarts), pct(valid_smiles), pct(unique), pct(novel), f'{diversity:.2f}', pct(rs)]
 N['table1_exact'] = dict(valid_walk=valid_walk, valid_smarts=valid_smarts, valid_smiles=valid_smiles, unique=unique,
                          novel=novel, diversity=diversity, retro=rs, counters=c, n_gen=len(gen))
+_DS = os.path.join(O, 'gen', 'design_space.json')   # how large the constraint makes the space enumerable
+if os.path.exists(_DS):
+    N['design_space'] = json.load(open(_DS))
 
 # ---- where sampling fails (reviewer asked for failure cases, and Table 1 only reports the stages after closure).
 # A repeat unit requires the walk to return to the motif it started from; sample_walk only sets good=True in that

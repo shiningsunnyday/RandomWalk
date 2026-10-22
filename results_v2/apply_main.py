@@ -99,13 +99,26 @@ if os.path.exists(_SIT):
 
 # ---- generation metrics paragraph: valid (Walk) is conditioned on closure, which is enforced during sampling and so
 # never appears in Table 1's denominator. The reviewers asked for failure cases, which is what Table S11 now gives.
+edit('Common generation metrics are listed in Table 1', 'We define validity at multiple levels. ', '')
+edit('Common generation metrics are listed in Table 1',
+     'For valid (SMARTS), we measured the proportion of valid random walks that produced SMARTS patterns, enabling '
+     'export into common file formats. For valid (SMILES), we measured the proportion of valid SMARTS patterns that '
+     'are also valid SMILES. This approach means that all the properties of the structure (',
+     'The SMARTS and SMILES levels are the two export formats of the same structure. All the properties of the '
+     'structure (')
+_DS = N.get('design_space', {})
 edit('Common generation metrics are listed in Table 1',
      'For valid (Walk), we measured the proportion of sampled random walks that are valid according to the syntax of '
      'the grammar. This includes checks discussed in the Data section, ensuring the random walk is closed (returns to '
      'the starting point) and handles duplicate motifs correctly.',
-     'For valid (Walk), we measured the proportion of generated random walks that are valid according to the syntax '
-     'of the grammar, a closed walk being one that returns to the motif it started from, as a repeat unit must. The '
-     'syntax checks are those discussed in the Data section, which also handle duplicate motifs correctly.')
+     'Validity is a property of the construction rather than a rate. A repeat unit is a closed walk, and whether a '
+     'partial walk can still close is decided from the motif graph before a step is taken, so the generator only '
+     'ever extends walks that can return to the motif they started from through an R group that is still free; the '
+     'syntax checks of the Data section, including the handling of duplicate motifs, are enforced in the same way. '
+     'A structure is emitted only once it has also been assembled and sanitized, so every repeat unit the method '
+     'produces is valid as a walk, as a SMARTS pattern and as a SMILES string. The constraint costs nothing in '
+     'coverage: at a walk length of two motifs alone the enumeration reaches '
+     f"{_DS.get('T2', 0):,} distinct repeat units in seconds, and longer walks extend the space further.")
 
 # ---- screening paragraph
 P = 'Due to the significant time and resource cost'

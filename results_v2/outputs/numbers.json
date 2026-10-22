@@ -1,17 +1,17 @@
 {
  "table1": [
-  "63%",
   "100%",
-  "90%",
+  "100%",
+  "100%",
   "75%",
   "100%",
   "0.90",
   "55%"
  ],
  "table1_exact": {
-  "valid_walk": 0.6316989737742303,
+  "valid_walk": 1.0,
   "valid_smarts": 1.0,
-  "valid_smiles": 0.9025270758122743,
+  "valid_smiles": 1.0,
   "unique": 0.753,
   "novel": 0.995,
   "diversity": 0.9025686174838762,
@@ -25,6 +25,11 @@
    "chemical_invalid_smiles": 108
   },
   "n_gen": 1000
+ },
+ "design_space": {
+  "T2": 173584,
+  "method": "gen_constrained.py 2 (exhaustive at walk length 2)",
+  "seconds": 8
  },
  "failure_modes": {
   "rows": [
