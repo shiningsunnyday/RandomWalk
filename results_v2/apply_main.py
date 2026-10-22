@@ -70,7 +70,8 @@ if os.path.exists(_SIT):
     # The "end to end" clause is a claim about the ranking, so derive it rather than assert it: if a graph-learning
     # baseline ever overtakes us (Chemprop's raw-target control is still running as of this writing), drop it.
     _cmp = _json.load(open(os.path.join(H, 'baselines', 'outputs', 'comparison.json')))['mean_mae']
-    _ours_mae = _cmp['Ours (random-walk grammar GNN)']
+    # the clause is about the model the paper now reports, so test it against that one
+    _ours_mae = N['conn']['conn']['mae'] if N.get('conn', {}).get('conn') else _cmp['Ours (random-walk grammar GNN)']
     _e2e = [k for k in _cmp if k.startswith(('Chemprop', 'HM-GNN'))]
     _e2e_below = all(_cmp[k] > _ours_mae for k in _e2e)
     _clause = (' Every '

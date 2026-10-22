@@ -1211,3 +1211,78 @@ still holds as a fact, but it can no longer be supported by claiming that model 
 summarizer does not. I only put a log-target arm and a baseline into the same sentence when today's
 connection-aware model reached 0.401 in log space and I went to check whether that beat polyBERT + ridge's 0.412.
 It does not — 0.401 is a log-space number and 0.412 is a raw-scale one. That check is what exposed the rest.
+
+---
+
+## 13. Resubmission close-out (2026-10-21, evening)
+
+### The predictor is now conn, end to end
+
+`campaign/conn_predict.py` trains it under the paper's own protocol and applies it to everything the published
+predictor used to supply. `pred_set.py` holds the one switch; both sets of predictions sit side by side.
+
+| Table 2 | published | **conn** |
+|---|---|---|
+| H₂ | 0.47 / 0.48 | **0.34 / 0.64** |
+| H₂/N₂ | 0.50 / 0.70 | **0.47 / 0.72** |
+| O₂ | **0.35** / 0.51 | 0.39 / 0.51 |
+| O₂/N₂ | 0.62 / 0.54 | **0.61 / 0.55** |
+| CO₂ | **0.37** / 0.49 | 0.39 / **0.60** |
+| CO₂/CH₄ | 0.43 / 0.75 | **0.32** / 0.73 |
+| mean | 0.456 / 0.580 | **0.421 / 0.625** |
+
+Downstream, all regenerated from conn's three-model ensembles: Tables S2 (calibrated), S8, S9, Figure 5, Figures
+S2–S4 and the screening counts, Tables S12/S13 (conn above the published parameterization) and Table S15.
+
+**The O₂/N₂ screening collapse is gone.** Structures passing the uncertainty filter go 397 / 7 / 383 → **543 / 460
+/ 548**. That collapse was the strongest argument for the log target; conn removes it without touching the target,
+which is the better fix and the last reason to revisit §12.
+
+**On the four synthesized polymers conn is better where it matters and worse on the control.** After the PIM-PI-4
+correction the three polymers new to this work agree within a factor of **1.9** (geomean 1.20, 5 of 9 inside
+combined error, against **0 of 9** uncorrected); the published model gave 3.9× and 4 of 9. PIM-PI-4 itself stays
+about 5× over. Two architectural fixes were tested and rejected: size-weighted pooling (0.424 MAE, control still
+3.0–5.6×) and degree-normalised aggregation, which helps the control (4.7 / 2.7 / 2.8) but costs held-out accuracy
+(0.448) and the novel three (|log₁₀| 0.110 → 0.142). The residual is reported in the text rather than engineered
+away. Its likely mechanism is in the record: PIM-PI-4's walk has the highest-degree node of the four, and the
+degree-normalised variant is the one that moves it.
+
+### Your five decisions, as applied
+
+1. **Bullish framing — applied, with one correction to the premise.** conn is second of fifteen at ten splits, not
+   at three: at the three-split protocol of Tables S12/S13 it is **fourth of sixteen** (0.421, behind 0.393, 0.401,
+   0.417). The main text therefore claims "among the most accurate, within 0.03 of the best, and no property or
+   split gives it a negative R²" for that table, and **Table S15** is new, reporting all fifteen methods at ten
+   splits where the second-place claim is checkable.
+2. **Footnote — applied** to the Table S12 caption: the earlier comparison predates the label corrections and ran
+   its baselines at fixed hyperparameters rather than tuned, both of which favour the baselines.
+3. Nothing to decide; the unique-cycle enumeration was already installed.
+4. **Claims kept, Retro\* reframed.** The passage now reads the metric in one direction — success is positive
+   evidence of accessibility, failure is as much a statement about search depth — with the 114 literature-made
+   monomers at 9% as the calibration of that conservatism, and our structures scoring well because the enumeration
+   reaches short walks of frequently used blocks first. Nothing undercuts the two synthesizability claims.
+5. **No weakening diff applied, and you were right about its provenance:** it came from an internal re-read after
+   the protocol fix (`BRIEFING.md` §1), not from any reviewer. "in good agreement", "remarkably close" and the
+   closing "highlights the power of the predictive model" are as submitted. Permeabilities are now reported only
+   after the control correction, with PIM-PI-4 stated as having been included for that purpose.
+
+### Figure 4C — fixed
+
+The labels were not vectorised after all. `image4.emf` carries 372 `EMR_EXTTEXTOUTW` records, one character each
+with its own reference point, so the two transposed labels are a **two-byte** change: the trailing digit of the
+top-right label and of the bottom-left one. Verified against the structures before touching anything — the
+top-right diamine ring carries two methyls (PIM-PI-3, `L5->P11[->P17,->P17]->L5`) and the bottom-left one carries
+one (PIM-PI-2, `L5->P15[->P17]->L5`); PIM-PI-1 has three and PIM-PI-4 four, both already correct. The patch is a
+step in `apply_main.py` that locates each record by its reference point and asserts the character before changing
+it, so it fails loudly if the artwork is ever replaced. Artwork, font, size and positions are untouched.
+
+**One consequence to note:** panel C now reads 1, 3 / 2, 4 left to right. The labels are correct; the reading order
+is not sequential. Putting the drawings in numeric order instead would mean moving vector artwork rather than
+patching two characters, which I would not do without the source.
+
+### What is left
+
+Nothing blocking. Open, and all optional: the five §5 decisions are now closed, Figure 1 and Figure S1 you have
+declined, and the only outstanding judgement calls are whether to keep the published parameterization as a second
+row in Tables S12/S13 (it costs one row and pre-empts "what changed since the ICML paper"), and whether to merge
+`results-v2-revision` onto `main`.
