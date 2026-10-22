@@ -64,6 +64,10 @@ ap.add_argument('--log_target', action='store_true')
 # its heavy-atom count, which is the group-contribution reading of the same pooling and is what the published
 # model's sum pooling was reaching for.
 ap.add_argument('--pool', default='mean', choices=['mean', 'sum', 'size'])
+# How a node's incoming messages are combined. Summing lets a motif with five neighbours accumulate five times the
+# message magnitude of a motif with one, which inflates the hidden state of a backbone unit that carries several
+# side chains; dividing by the degree removes that and is the usual choice for graphs of mixed degree.
+ap.add_argument('--agg', default='sum', choices=['sum', 'mean'])
 ap.add_argument('--out', default=os.path.join(H, 'outputs', 'conn'))
 # importable: a module that imports this one (conn_predict.py) parses no arguments of its own here
 cli = ap.parse_args([] if __name__ != '__main__' else None)
@@ -244,10 +248,11 @@ def batch(graphs, idx):
 # ---------------------------------------------------------------- model
 
 class ConnGNN(nn.Module):
-    def __init__(self, in_dim, hid, layers, dropout, use_red, pool='mean'):
+    def __init__(self, in_dim, hid, layers, dropout, use_red, pool='mean', agg='sum'):
         super().__init__()
         self.use_red = use_red
         self.pool = pool
+        self.agg = agg
         self.inp = nn.Sequential(nn.Linear(in_dim, hid), nn.ReLU(), nn.Linear(hid, hid))
         self.base_proj = nn.Linear(in_dim, hid)
         self.red_proj = nn.Linear(in_dim, hid)
@@ -267,6 +272,10 @@ class ConnGNN(nn.Module):
                 if self.use_red and red is not None:
                     m = m + rl(torch.cat([h[g['src']], red], -1))
                 agg = torch.zeros_like(h).index_add_(0, g['dst'], m)
+                if self.agg == 'mean':
+                    deg = torch.zeros((h.shape[0], 1), dtype=h.dtype).index_add_(
+                        0, g['dst'], torch.ones((m.shape[0], 1), dtype=h.dtype))
+                    agg = agg / deg.clamp(min=1.0)
             else:
                 agg = torch.zeros_like(h)
             h = h + ul(torch.cat([h, agg], -1))
@@ -291,7 +300,7 @@ if os.environ.get('CONN_FIXED'):
 def run_one(bt, bv, bte, y, tr, va, te, cfg, seed):
     torch.manual_seed(seed)
     model = ConnGNN(bt['all'].shape[1], cfg['hid'], cfg['layers'], cfg['dropout'], cli.msg == 'both',
-                    pool=cli.pool)
+                    pool=cli.pool, agg=cli.agg)
     lossf = nn.HuberLoss(delta=cli.huber) if cli.huber > 0 else None
     opt = torch.optim.Adam(model.parameters(), lr=cfg['lr'])
     Y = torch.tensor(y, dtype=torch.float32)

@@ -18,6 +18,7 @@ and `worst R²` are over all 18 (property, split) fits and make those rows visib
 | Bag-of-Motifs (+expert) | 0.393 | 0.632 | 0.678 | -0.52 | 16/18 |
 | polyBERT + ridge | 0.401 | 0.661 | 0.703 | -0.03 | 10/18 |
 | Morgan FP + GP (Tanimoto) | 0.417 | 0.625 | 0.559 | 0.40 | 6/18 |
+| Ours (connection-aware) | 0.421 | 0.625 | 0.610 | 0.15 |  |
 | Morgan FP + GP (Tanimoto) [raw target] | 0.428 | 0.620 | 0.567 | 0.40 | 0/18 |
 | RDKit descriptors + XGBoost | 0.435 | 0.552 | 0.540 | -0.04 | 12/18 |
 | polyBERT + GP (RBF) | 0.436 | 0.635 | 0.626 | 0.44 | 4/18 |
@@ -53,6 +54,7 @@ and `worst R²` are over all 18 (property, split) fits and make those rows visib
 
 | Method | H2 | H2/N2 | O2 | O2/N2 | CO2 | CO2/CH4 |
 |---|---|---|---|---|---|---|
+| Ours (connection-aware) | 0.34 ± 0.17 | 0.47 ± 0.27 | 0.39 ± 0.17 | 0.61 ± 0.20 | 0.39 ± 0.21 | 0.32 ± 0.09 |
 | Ours (random-walk grammar GNN) | 0.47 ± 0.21 | 0.50 ± 0.28 | 0.35 ± 0.19 | 0.62 ± 0.17 | 0.37 ± 0.18 | 0.43 ± 0.13 |
 | Bag-of-Motifs | 0.49 ± 0.22 | 0.55 ± 0.29 | 0.56 ± 0.17 | 0.61 ± 0.04 | 0.50 ± 0.26 | 0.44 ± 0.10 |
 | Bag-of-Motifs (+expert) | 0.30 ± 0.09 | 0.45 ± 0.27 | 0.26 ± 0.12 | 0.52 ± 0.07 | 0.32 ± 0.17 | 0.51 ± 0.12 |
@@ -89,6 +91,7 @@ and `worst R²` are over all 18 (property, split) fits and make those rows visib
 
 | Method | H2 | H2/N2 | O2 | O2/N2 | CO2 | CO2/CH4 |
 |---|---|---|---|---|---|---|
+| Ours (connection-aware) | 0.64 ± 0.20 | 0.72 ± 0.08 | 0.51 ± 0.29 | 0.55 ± 0.16 | 0.60 ± 0.25 | 0.73 ± 0.19 |
 | Ours (random-walk grammar GNN) | 0.48 ± 0.27 | 0.70 ± 0.08 | 0.51 ± 0.36 | 0.54 ± 0.13 | 0.49 ± 0.34 | 0.75 ± 0.01 |
 | Bag-of-Motifs | 0.40 ± 0.15 | 0.54 ± 0.19 | 0.29 ± 0.08 | 0.52 ± 0.10 | 0.44 ± 0.23 | 0.51 ± 0.25 |
 | Bag-of-Motifs (+expert) | 0.68 ± 0.09 | 0.76 ± 0.06 | 0.76 ± 0.07 | 0.66 ± 0.03 | 0.72 ± 0.17 | 0.20 ± 0.51 |

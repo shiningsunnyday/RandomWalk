@@ -118,7 +118,7 @@ def fit(bt, bv, y, tr, va, cfg, seed, epochs=400):
     """train one model, returning it at its best validation epoch"""
     torch.manual_seed(seed)
     model = CG.ConnGNN(bt['all'].shape[1], cfg['hid'], cfg['layers'], cfg['dropout'], True,
-                       pool=os.environ.get('CONN_POOL', 'mean'))
+                       pool=os.environ.get('CONN_POOL', 'mean'), agg=os.environ.get('CONN_AGG', 'sum'))
     opt = torch.optim.Adam(model.parameters(), lr=cfg['lr'])
     Y = torch.tensor(y, dtype=torch.float32)
     ytr, yva = Y[tr], Y[va]
