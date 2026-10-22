@@ -119,9 +119,8 @@ log.append('screening paragraphs updated')
 cap1 = find_par(t, 'Figure S1')
 replace_in_par(cap1, ').',
                '), and add two groups (P42, S33) needed to represent the dataset, for 99 in total. Thirteen of the '
-               'groups were revised after this panel was drawn — eleven edited definitions, the two added '
-               'groups, and a moved R site on P36 — and the definitions used throughout the work are the ones '
-               'distributed with the code.')
+               'groups were revised after this panel was drawn: eleven edited definitions, the two added groups, '
+               'and a moved R site on P36.')
 log.append('Figure S1 caption: 99 groups + stale-panel note')
 
 # The ablation of edge weights and message-passing direction, and the breakdown of where sampling fails, both

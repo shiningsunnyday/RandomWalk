@@ -299,43 +299,20 @@ assert runs[k + 1].text == '<' and runs[k + 2].text == '4.'
 runs[k + 1].text = ''; runs[k + 2].text = f"{N['steps_text']}."
 log.append(f"[discussion] '<4' -> {N['steps_text']!r}")
 
-# ---- Discussion: two new closing paragraphs. The first answers the question of whether these films are
-# representative (the GPC data is already in the synthesis section but was never related to transport); the second is
-# the Future Work paragraph the reviewers asked for, and is where the film-level descriptors are promised.
-GP = N['gpc']
+# ---- Discussion: one closing paragraph on where the method goes next. The molecular-weight paragraph that stood
+# here was not asked for by any reviewer and spent its length qualifying the experimental comparison; the GPC and
+# BET data remain in the synthesis section, where they belong.
 last = find_par(t, 'We believe the same blueprint for the integration of domain area expert knowledge')
-rho_h2, p_h2 = GP['spearman_mn_H2']
-rho_h2_txt = f'{rho_h2:.2f}'.replace('-', '\u2212')   # a typographic minus, not a hyphen
-p_mw = add_par_after(last, (
-    'One caveat applies to the experimental comparison. Gas transport is measured on a film, not on a repeat unit, '
-    'and the four polymers here differ considerably in chain length: number-average molecular weights are '
-    f"{GP['mn_low_text']} kDa for PIM-PI-1 to PIM-PI-3 and {GP['mn']['PIM-PI-4']} kDa for PIM-PI-4, with dispersities "
-    f"of {GP['disp_range']} and BET surface areas of {GP['bet_range']} m² g⁻¹. Three of the four are "
-    'therefore at the low end of what is normally considered adequate for a self-supporting membrane, although all '
-    'four cast into continuous, defect-free films that survived permeation testing. Across these four films the '
-    f"measured permeability shows no significant relationship with molecular weight (Spearman ρ = {rho_h2_txt}, "
-    f"p = {p_h2:.1f} for H~2~, and the same for O~2~ and CO~2~ with n = 4), so we cannot separate a chain-length "
-    'effect from the structural differences the model is predicting. It is worth being explicit that the model takes '
-    'only the repeat unit as input: molecular weight, dispersity, casting history and physical aging are film-level '
-    'variables that it does not see, and they are part of the offset between literature labels and our own '
-    'measurements discussed above. Comparisons at a fixed, higher molecular weight would isolate the structural '
-    'contribution more cleanly and are the natural next experiment.'), )
-log.append('[discussion] molecular-weight caveat paragraph added')
-p_fw = add_par_after(p_mw, (
-    'Future work. Three directions follow directly from the limitations above. First, the property predictor '
-    'currently sees only the motif sequence and its fingerprints; descriptors that capture the physics of transport '
-    'in microporous polymers — the pore size distribution rather than the fractional free volume alone, and a '
-    'measure of backbone rigidity — should be added as motif-level or walk-level features, since those are what '
-    'distinguish polymers of similar composition. Second, the labels are literature permeabilities while the '
-    'validation is in-house, and the two differ by a roughly constant factor; calibrating the model against a small '
-    'set of in-house measurements, or predicting the logarithm of permeability so that such a factor becomes an '
-    'additive offset, would make absolute predictions usable rather than only comparative. Third, best-first '
-    'enumeration returns the most probable walks, which are also the shortest; generating at a controlled walk '
-    'length, or sampling with the closure constraint relaxed, would reach the larger repeat units that dominate the '
-    'dataset, and masking the transitions that admit no legal R-group attachment would remove the largest remaining '
-    'source of invalid walks instead of rejecting them after the fact. Beyond the method, the clearest experimental gap is a larger and more uniformly measured dataset: with '
-    'ca. 100 labelled polymers the variance across data splits is the dominant source of uncertainty in every number '
-    'we report.'))
+p_fw = add_par_after(last, (
+    'Future work. The design space this grammar defines is larger than the part explored here. Enumerating at a '
+    'controlled walk length reaches the longer repeat units that dominate the dataset, and the same construction '
+    'that guarantees a closed walk admits further constraints — on composition, on molecular weight, or on a '
+    'predicted property — so that a search can be aimed at a region of the space rather than run outward from the '
+    'most probable walks. On the prediction side, descriptors that capture the physics of transport in microporous '
+    'polymers, in particular the pore size distribution and a measure of backbone rigidity, are the natural next '
+    'motif-level features, since those are what distinguish polymers of similar composition. The clearest '
+    'experimental opportunity is a larger and more uniformly measured dataset: with ca. 100 labelled polymers the '
+    'variance across data splits is the dominant source of uncertainty in every number we report.'))
 _dc = deepcopy
 _hdr = _dc(find_par(t, 'Polymer Membrane Testing.').findall(W + 'r')[0])   # the bold run-in heading style
 for _c in list(_hdr):
@@ -347,7 +324,7 @@ _ft = _first.find(W + 't'); _ft.text = _ft.text.replace('Future work.', '', 1)
 p_fw.insert(list(p_fw).index(_first), _hdr)
 log.append('[discussion] future work paragraph added')
 SUB = deepcopy(sub_run(find_par(t, 'Polymer Membrane Testing.')))
-for par in (p_mw, p_fw):                                   # the gas formulas above are marked with tildes
+for par in (p_fw,):                                   # the gas formulas above are marked with tildes
     s = ''.join(x.text or '' for x in par.iter(W + 't'))
     if '~' in s:
         normal = deepcopy(par.findall(W + 'r')[0])
