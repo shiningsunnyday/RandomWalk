@@ -110,8 +110,8 @@ def si_tables(M, mean_mae, med_r2, min_r2):
     out = {}
     for key, suffix in (('tuned', ''), ('raw', ' [raw target]')):
         rows, notes = [], []
-        avail = [(lab, nm + suffix if nm != SI_LABEL['Ours (random-walk grammar)'] else nm)
-                 for lab, nm in SI_LABEL.items()]
+        # our own rows have no [raw target] variant: they are always trained on the untransformed targets
+        avail = [(lab, nm if nm.startswith('Ours') else nm + suffix) for lab, nm in SI_LABEL.items()]
         avail = [(lab, nm) for lab, nm in avail if nm in M and all(p in M[nm] for p in PROPS)]
         ours = [(lab, nm) for lab, nm in avail if nm.startswith('Ours')]
         rest = sorted([(lab, nm) for lab, nm in avail if not nm.startswith('Ours')], key=lambda x: mean_mae[x[1]])

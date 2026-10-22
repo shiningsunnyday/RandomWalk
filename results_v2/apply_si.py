@@ -39,6 +39,22 @@ _cp = lambda w, g: (pred[(w, g)][0] / _cal[g], pred[(w, g)][1] / _cal[g])
 s2 = [[p, fmt_perm2(*_cp(w, 'H2')), fmt_perm2(*_cp(w, 'O2')), fmt_perm2(*_cp(w, 'CO2'))] for p, w in walk_of.items()]
 s4 = [[p] + [f'{pred[(w, k)][0]:.1f} ± {pred[(w, k)][1]:.1f}' for k in ('CO2/CH4', 'O2/N2', 'H2/N2')] for p, w in walk_of.items()]
 fill_table_rows(tables_after(t, 'Table S2'), s2); fill_table_rows(tables_after(t, 'Table S4'), s4)
+# say in the caption that the predicted permeabilities carry the control correction, since the measured columns
+# of the same table do not
+_cap2 = find_par(t, 'Table S2')
+_f = ', '.join(f"{_cal[g]:.1f}X for {g[0]}~{g[1:]}~" for g in ('H2', 'O2', 'CO2'))
+_sub = None
+for _p in ('Table S4', 'Table S3', 'Table S5', 'Table S9'):
+    try:
+        _sub = sub_run(find_par(t, _p))
+        break
+    except Exception:
+        continue
+append_rich(_cap2, (' Predicted permeabilities are reported on the scale of our own films: each is divided by the '
+                    f'literature-to-laboratory factor for its gas ({_f}), measured on PIM-PI-4, the one repeat '
+                    'unit in this study for which both a literature value and our own measurement exist. The '
+                    'predicted selectivities of Table S4 are not corrected, being ratios taken on a single film.'),
+            _cap2.findall(W + 'r')[-1], _sub if _sub is not None else _cap2.findall(W + 'r')[-1])
 log += ['Table S2: ' + json.dumps(s2), 'Table S4: ' + json.dumps(s4)]
 
 # ---- Table S6: the 114 corrected dataset walks and their clean SMILES (was: atom-mapped SMARTS, missing rows)

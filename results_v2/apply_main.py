@@ -43,8 +43,9 @@ for tr, (mae, r2) in zip(rows[1:], N['table2']):
 log.append('Table 2: ' + json.dumps(N['table2']))
 set_col_widths(t2, [2196, 1330, 1330])                        # R2 column as wide as MAE so 'x ± y' fits
 edit('Table 2:', ' Prediction Metrics over Normalized Values, Averaged over 3 random seeds',
-     ' Test-set prediction metrics on normalized values (mean ± standard deviation over 3 train/test splits; '
-     'model epoch and configuration selected on a validation set)')
+     ' Test-set prediction metrics of the connection-aware predictor on normalized values (mean ± standard '
+     'deviation over 3 train/test splits; model epoch and configuration selected on a validation set). Table S12 '
+     'reports the same metrics for the published parameterization and for fifteen baselines')
 
 # ---- evaluation protocol paragraph
 P = 'Our predictive model was evaluated on held-out test sets'
@@ -190,12 +191,18 @@ edit(P, 'One notable outlier was that the model consistently overpredicted the H
      'permeabilities, and PIM-PI-4 was included in this study precisely as a control: it is the one repeat unit '
      'for which both a literature value and our own measurement exist, so the ratio between them gives a '
      f"per-gas correction ({_CAL['factor_text'].replace('x', 'X')}) that we apply to all four polymers. After this "
-     f"correction the predicted and measured permeabilities agree to within a factor of "
-     f"{_CAL['within_text_all']} across all four polymers and all three gases, and for H")
-edit(P, '2 permeability by a factor of approximately 2 – 3X, although the predicted selecivities for H',
-     f"2 the geometric mean of predicted to measured permeability is "
-     f"{_CAL['per_gas']['H2']['geomean_cal']:.2f}, with every polymer inside combined experimental error. The "
-     'predicted selectivities for H')
+     'correction the predicted and measured permeabilities of the three polymers that are new to this work agree '
+     f"to within a factor of {_CAL['within_text_novel']} across all three gases, with a geometric-mean ratio of "
+     f"{_CAL['cal']['geomean']:.2f} and {_CAL['cal']['within']} of the {_CAL['cal']['n']} values inside the "
+     'combined measurement and ensemble error, against none of them before the correction. For H')
+# the subscript 2 of "H2" is its own run, so this edit picks up after it
+edit(P, 'permeability by a factor of approximately 2 – 3X, although the predicted selecivities for H',
+     f"the ratio of predicted to measured permeability is {_CAL['per_gas']['H2']['geomean_cal']:.2f}, and for CO2 "
+     f"it is {_CAL['per_gas']['CO2']['geomean_cal']:.2f}. The previously reported polymer, which defines the correction "
+     'and whose own measured permeabilities are the lowest of the four, remains overpredicted by about a factor '
+     f"of {_CAL['within_text_all'].split('.')[0]}; its literature values and ours differ by more than for any "
+     'other polymer here, which is the same observation the correction is built on. The predicted selectivities '
+     'for H')
 edit(P, 'were still within error for all the polymers.',
      f"were within {N['h2n2_within_pct']}% of the measured values for all the polymers.")
 # The reviewers asked for the overprediction to be investigated rather than acknowledged, so the closing sentence is
@@ -354,8 +361,8 @@ for par in (p_mw, p_fw):                                   # the gas formulas ab
 
 # ---- Methods: property predictor (match what the selected models are)
 _PN = {'H2_N2': 'H\u2082/N\u2082', 'O2_N2': 'O\u2082/N\u2082', 'CO2_CH4': 'CO\u2082/CH\u2084'}
-_sel = [_PN[k] for k, v in sorted(N['selected_configs'].items()) if v['fw'] == 'True']
-_uns = [_PN[k] for k, v in sorted(N['selected_configs'].items()) if v['fw'] != 'True']
+_sel = [_PN[k] for k, v in sorted(N['published_selected_configs'].items()) if v['fw'] == 'True']
+_uns = [_PN[k] for k, v in sorted(N['published_selected_configs'].items()) if v['fw'] != 'True']
 _j = lambda xs: (' and '.join(xs) if len(xs) < 3 else ', '.join(xs[:-1]) + ' and ' + xs[-1])
 W_SEL = _j(_sel) + (' pairs' if len(_sel) > 1 else ' pair')
 W_UNSEL = _j(_uns) + (' pairs' if len(_uns) > 1 else ' pair')
@@ -384,8 +391,8 @@ edit(P, 'Additionally, the message passing was influenced in two ways by the ran
      'ᵥ to motif v’s feature vector therefore tells the predictor not only which motifs the walk contains '
      'but how probable the grammar considered each transition into them, which is the concrete sense in which '
      'generation and prediction share a representation. Whether to append it, and the weight initialization, were '
-     f"also selected on the validation set; it was selected for the {W_SEL} and not for the {W_UNSEL}. The final pooling "
-     'layer averages over the nodes of the walk.')
+     f"also selected on the validation set; in this parameterization it was selected for the {W_SEL} and not for "
+     f"the {W_UNSEL}. The final pooling layer averages over the nodes of the walk.")
 
 # ---- Methods: the connection-aware predictor. This is the model the revision prescribes, and the paragraph has to
 # do three things: say what is inherited from Sun et al. (53), say what is new here, and give the numbers that
@@ -408,7 +415,10 @@ if _C and 'conn' in _C:
         'term pooled over u\u2019s non-R-group atoms, and an R-group term pooled over exactly the atoms that this '
         'bond consumes. Because a bond consumes different atoms in each direction, and a different bond between the '
         'same pair of motifs consumes different atoms, the message is specific to the connection rather than to the '
-        'pair of motifs. Hidden states are updated residually and the readout is unchanged. ')
+        'pair of motifs. Hidden states are updated residually and the readout is unchanged. This model does not '
+        'append the transition probabilities to its node features; what it shares with the generator is the '
+        'attachment chosen for every bond, which is the same record the generator writes when it assembles a walk '
+        'into a structure. ')
     _txt += (f"Under the ten-split protocol this lowers test MAE from {_b0['mae']:.3f} to {_c['mae']:.3f} and "
              f"raises R\u00b2 from {_b0['r2']:.3f} to {_c['r2']:.3f}, a paired improvement of "
              f"{abs(_c['dmae']):.3f} MAE over {_c['n']} property-split cells (t = {abs(_c['t']):.2f}). ")
