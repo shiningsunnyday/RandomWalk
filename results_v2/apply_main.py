@@ -263,6 +263,44 @@ log.append(f"[experimental] calibration passage added (mean |log10| {C['raw']['m
            f"{C['cal']['mean_abs_log10']:.3f}, within {C['raw']['within']}/{C['raw']['n']} -> "
            f"{C['cal']['within']}/{C['cal']['n']})")
 
+# ---- Figure 4C: the labels of the two middle structures are transposed relative to Figure 5, Tables S2-S5 and
+# the NMR assignments. The structure drawn top right carries two methyls on the diamine ring, which is PIM-PI-3
+# (walk L5->P11[->P17,->P17]->L5), and the one drawn bottom left carries one, which is PIM-PI-2
+# (L5->P15[->P17]->L5); the panel names them the other way round.
+#
+# Figure 4 is a single EMF holding all four panels, so the panel cannot be replaced on its own, but the labels are
+# not vectorised after all: the file carries 372 EMR_EXTTEXTOUTW records, one per character, each with its own
+# reference point. The two trailing digits are therefore a two-byte fix that leaves the artwork, the font and the
+# glyph positions exactly as drawn. Each record is located by its reference point rather than by a file offset, and
+# the character found there is asserted before it is changed, so this fails loudly if the artwork is ever replaced.
+import struct as _struct
+_emf_path = os.path.join(U, 'word', 'media', 'image4.emf')
+if os.path.exists(_emf_path):
+    _emf = bytearray(open(_emf_path, 'rb').read())
+    _off, _recs = 0, []
+    while _off + 8 <= len(_emf):
+        _t, _sz = _struct.unpack_from('<II', _emf, _off)
+        if _sz < 8 or _off + _sz > len(_emf):
+            break
+        if _t == 84:                                    # EMR_EXTTEXTOUTW
+            _x, _y = _struct.unpack_from('<ii', _emf, _off + 36)
+            _n, _so = _struct.unpack_from('<II', _emf, _off + 44)
+            if _n == 1:
+                _recs.append((_x, _y, _off + _so, _emf[_off + _so:_off + _so + 2].decode('utf-16-le', 'replace')))
+        _off += _sz
+    def _digit(ch, y, x_lo, x_hi):
+        hits = [r for r in _recs if r[3] == ch and abs(r[1] - y) <= 8 and x_lo <= r[0] <= x_hi]
+        assert len(hits) == 1, f'Figure 4C: expected one {ch!r} near y={y}, found {len(hits)}'
+        return hits[0][2]
+    _a = _digit('2', 7264, 6000, 7400)                  # trailing digit of the top-right label
+    _b = _digit('3', 8851, 2000, 3400)                  # trailing digit of the bottom-left label
+    _emf[_a:_a + 2] = '3'.encode('utf-16-le')
+    _emf[_b:_b + 2] = '2'.encode('utf-16-le')
+    open(_emf_path, 'wb').write(bytes(_emf))
+    log.append('Figure 4C: labels of the two middle structures swapped (2 bytes in image4.emf)')
+else:
+    log.append('Figure 4C SKIPPED: word/media/image4.emf not found')
+
 # ---- Figure 5: new plot (PNG replaces the EMF) and caption
 rels_path = os.path.join(U, 'word', '_rels', 'document.xml.rels'); rels = open(rels_path).read()
 cap = find_par(t, 'Figure 5.'); e = cap.getprevious()
