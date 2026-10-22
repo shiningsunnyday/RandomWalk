@@ -59,8 +59,14 @@ ap.add_argument('--epochs', type=int, default=400)
 # `base`, whose MAE is in raw-normalized units.
 ap.add_argument('--huber', type=float, default=0.0)
 ap.add_argument('--log_target', action='store_true')
+# How the per-node states are pooled into a prediction. 'mean' weights every motif equally, which lets a repeat
+# unit carrying four methyl side chains spend two thirds of its readout on methyls; 'size' weights each motif by
+# its heavy-atom count, which is the group-contribution reading of the same pooling and is what the published
+# model's sum pooling was reaching for.
+ap.add_argument('--pool', default='mean', choices=['mean', 'sum', 'size'])
 ap.add_argument('--out', default=os.path.join(H, 'outputs', 'conn'))
-cli = ap.parse_args()
+# importable: a module that imports this one (conn_predict.py) parses no arguments of its own here
+cli = ap.parse_args([] if __name__ != '__main__' else None)
 SEEDS = ([int(x) for x in cli.seeds.split(',')] if ',' in cli.seeds else
          list(range(int(cli.seeds.split('-')[0]), int(cli.seeds.split('-')[1]) + 1)))
 
@@ -210,7 +216,8 @@ def tensors(graphs, feats):
                     red.append(f['X'][f['red']].mean(0) if f['red'].any() else f['X'].mean(0))
                 else:
                     red.append(pooled(feats, ids[a], 'idx', ridx))
-        out.append({'all': node_all.astype(np.float32), 'black': node_black.astype(np.float32),
+        out.append({'w': np.array([float(feats[i]['X'].shape[0]) for i in ids], dtype=np.float32),
+                    'all': node_all.astype(np.float32), 'black': node_black.astype(np.float32),
                     'src': np.array(src, dtype=np.int64), 'dst': np.array(dst, dtype=np.int64),
                     'red': (np.stack(red).astype(np.float32) if red
                             else np.zeros((0, node_all.shape[1]), np.float32))})
@@ -220,26 +227,27 @@ def tensors(graphs, feats):
 def batch(graphs, idx):
     """one disjoint-union graph for a whole split: the model then costs a handful of tensor ops per epoch rather
     than one forward pass per polymer, which is the difference between minutes and seconds per run"""
-    off, A, B, S, Dd, R, gid = 0, [], [], [], [], [], []
+    off, A, B, S, Dd, R, gid, Wt = 0, [], [], [], [], [], [], []
     for gi, i in enumerate(idx):
         g = graphs[i]
         n = g['all'].shape[0]
-        A.append(g['all']); B.append(g['black']); R.append(g['red'])
+        A.append(g['all']); B.append(g['black']); R.append(g['red']); Wt.append(g['w'])
         S.append(g['src'] + off); Dd.append(g['dst'] + off)
         gid.append(np.full(n, gi, dtype=np.int64))
         off += n
     return {'all': torch.from_numpy(np.concatenate(A)), 'black': torch.from_numpy(np.concatenate(B)),
             'red': torch.from_numpy(np.concatenate(R)), 'src': torch.from_numpy(np.concatenate(S)),
             'dst': torch.from_numpy(np.concatenate(Dd)), 'gid': torch.from_numpy(np.concatenate(gid)),
-            'n_graphs': len(idx)}
+            'w': torch.from_numpy(np.concatenate(Wt)).unsqueeze(1), 'n_graphs': len(idx)}
 
 
 # ---------------------------------------------------------------- model
 
 class ConnGNN(nn.Module):
-    def __init__(self, in_dim, hid, layers, dropout, use_red):
+    def __init__(self, in_dim, hid, layers, dropout, use_red, pool='mean'):
         super().__init__()
         self.use_red = use_red
+        self.pool = pool
         self.inp = nn.Sequential(nn.Linear(in_dim, hid), nn.ReLU(), nn.Linear(hid, hid))
         self.base_proj = nn.Linear(in_dim, hid)
         self.red_proj = nn.Linear(in_dim, hid)
@@ -262,10 +270,12 @@ class ConnGNN(nn.Module):
             else:
                 agg = torch.zeros_like(h)
             h = h + ul(torch.cat([h, agg], -1))
-        # mean over each polymer's own nodes
-        s = torch.zeros((g['n_graphs'], h.shape[1]), dtype=h.dtype).index_add_(0, g['gid'], h)
-        c = torch.zeros((g['n_graphs'], 1), dtype=h.dtype).index_add_(
-            0, g['gid'], torch.ones((h.shape[0], 1), dtype=h.dtype))
+        # pool each polymer's own nodes
+        w = torch.ones((h.shape[0], 1), dtype=h.dtype) if self.pool != 'size' else g['w']
+        s = torch.zeros((g['n_graphs'], h.shape[1]), dtype=h.dtype).index_add_(0, g['gid'], h * w)
+        if self.pool == 'sum':
+            return self.out(s)
+        c = torch.zeros((g['n_graphs'], 1), dtype=h.dtype).index_add_(0, g['gid'], w)
         return self.out(s / c)
 
 
@@ -280,7 +290,8 @@ if os.environ.get('CONN_FIXED'):
 
 def run_one(bt, bv, bte, y, tr, va, te, cfg, seed):
     torch.manual_seed(seed)
-    model = ConnGNN(bt['all'].shape[1], cfg['hid'], cfg['layers'], cfg['dropout'], cli.msg == 'both')
+    model = ConnGNN(bt['all'].shape[1], cfg['hid'], cfg['layers'], cfg['dropout'], cli.msg == 'both',
+                    pool=cli.pool)
     lossf = nn.HuberLoss(delta=cli.huber) if cli.huber > 0 else None
     opt = torch.optim.Adam(model.parameters(), lr=cfg['lr'])
     Y = torch.tensor(y, dtype=torch.float32)

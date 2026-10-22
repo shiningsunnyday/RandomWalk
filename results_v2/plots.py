@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 H = os.path.dirname(os.path.abspath(__file__))
 O = os.path.join(H, 'outputs'); F = os.path.join(O, 'figs'); os.makedirs(F, exist_ok=True)
 import gen_set as GEN                       # which generated set the screening figures show
+import pred_set as PRED                     # which trained predictor supplies the predictions
 GAS = {'H2': ('H2/N2', 9.765e4, -1.4841, (500, 10)), 'O2': ('O2/N2', 1.396e6, -5.666, (100, 2)),
        'CO2': ('CO2/CH4', 5.369e6, -2.636, (1000, 5))}
 COL = {'H2': 0, 'N2': 1, 'O2': 2, 'CH4': 3, 'CO2': 4}
@@ -51,8 +52,8 @@ def upper_bound(ax, k, n, xlim):
 
 
 def screening_figures():
-    gen = load_ens(os.path.join(O, GEN.ENS))
-    data = load_ens(os.path.join(O, 'dataset_ensemble.txt'))
+    gen = load_ens(os.path.join(H, PRED.S9))
+    data = load_ens(os.path.join(H, PRED.DATASET))
     walks_gen = [l.split()[0] for l in open(os.path.join(O, GEN.WALKS))]
     rows = [l.split() for l in open(os.path.join(H, 'data/group-contrib/polymer_walks_v2_preprocess.txt'))]
     counts = {}
@@ -101,13 +102,12 @@ COLORS = {'PIM-PI-1': '#c00000', 'PIM-PI-2': '#1f4e9c', 'PIM-PI-3': '#2e7d4f', '
 
 
 def fig5():
-    pred = load_ens(os.path.join(O, 'fig5_ensemble.txt'))
+    pred = load_ens(os.path.join(H, PRED.FIG5))
     walk_of = json.load(open(os.path.join(H, 'inputs', 'experimental_walks.json')))
     # Permeabilities are shown on our own lab's scale: the predictions are divided by the literature-vs-lab factor
     # identified on PIM-PI-4, the one repeat unit measured in both protocols (compute_numbers.py -> calibration).
-    # Selectivities are NOT calibrated, because a ratio of two permeabilities on the same film already cancels the
-    # offset. The uncalibrated prediction stays on the plot as a small grey diamond so the size of the correction,
-    # and the fact that it is one number per gas rather than per polymer, are both visible.
+    # That correction is part of the method, so the figure shows the corrected values and only those; selectivities
+    # are NOT calibrated, because a ratio of two permeabilities on the same film already cancels the offset.
     cal = json.load(open(os.path.join(O, 'numbers.json')))['calibration']['factors']
     fig, axes = plt.subplots(1, 3, figsize=(13, 4.3))
     for ax, gas, lab in zip(axes, ('CO2', 'O2', 'H2'), 'ABC'):
@@ -118,12 +118,10 @@ def fig5():
             (rx, rxs), (py, pys) = pred[(w, gas)], pred[(w, pair)]
             px, pxs = rx / cal[gas], rxs / cal[gas]
             c = COLORS[p]
-            ax.plot([rx, px], [py, py], c='0.75', lw=0.8, zorder=1)
-            ax.plot(rx, py, marker='D', ls='', c='0.75', mfc='white', ms=4.5, zorder=1)
             ax.plot([ex, px], [ey, py], c=c, lw=0.8, ls=':', zorder=1)
             ax.errorbar(ex, ey, xerr=exs, yerr=eys, fmt='o', c=c, ms=7, capsize=2, zorder=3)
             ax.errorbar(px, py, xerr=pxs, yerr=pys, fmt='D', c=c, mfc='white', ms=7, capsize=2, zorder=2)
-            xs += [ex, max(px - pxs, ex * 0.5), rx + rxs]
+            xs += [ex, max(px - pxs, ex * 0.5), px + pxs]
         ax.set_xscale('log'); ax.set_yscale('log')
         plain_ticks(ax)
         lo, hi = 10 ** np.floor(np.log10(min(xs))), 10 ** np.ceil(np.log10(max(xs)))
@@ -135,8 +133,7 @@ def fig5():
     from matplotlib.lines import Line2D
     handles = [Line2D([], [], marker='o', ls='', c=c, label=p) for p, c in COLORS.items()]
     handles += [Line2D([], [], marker='o', ls='', c='k', label='experiment'),
-                Line2D([], [], marker='D', ls='', c='k', mfc='white', label='prediction (calibrated)'),
-                Line2D([], [], marker='D', ls='', c='0.75', mfc='white', ms=4.5, label='prediction (uncalibrated)')]
+                Line2D([], [], marker='D', ls='', c='k', mfc='white', label='prediction')]
     fig.legend(handles=handles, loc='lower center', ncol=6, frameon=False, fontsize=10)
     fig.tight_layout(rect=(0, 0.08, 1, 1))
     fig.savefig(os.path.join(F, 'fig5.png'), dpi=220); plt.close(fig)

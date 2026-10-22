@@ -16,6 +16,7 @@ from rdkit.Chem import AllChem, DataStructs
 RDLogger.DisableLog('rdApp.*')
 H = os.path.dirname(os.path.abspath(__file__)); O = os.path.join(H, 'outputs'); D = os.path.join(H, 'data', 'group-contrib')
 import gen_set as GEN                       # which generated set Table 1 reports
+import pred_set as PRED                     # which trained predictor Table 2 and the ensembles come from
 N = {}
 
 # ---- Table 1
@@ -55,24 +56,40 @@ N['failure_modes'] = {
     'closure_pct': f'{100 * nt / ns:.1f}', 'n_sampled': f'{ns:,}', 'n_closed': f'{nt:,}'}
 
 # ---- Table 2 (row order: H2, H2/N2, O2, O2/N2, CO2, CO2/CH4)
-R = pd.read_csv(os.path.join(O, 'grid_runs.csv'))
-CFG = ['ew', 'fw', 'init', 'directed']
+R = pd.read_csv(os.path.join(H, PRED.GRID))
+CFG = ['config'] if PRED.STEM == 'conn' else ['ew', 'fw', 'init', 'directed']
 def select(sub):
     out = []
     for pair, g in sub.groupby('pair'):
         m = g.groupby(CFG)['val_loss'].agg(['mean', 'count'])
         best = m[m['count'] == 3]['mean'].idxmin()
+        if not isinstance(best, tuple):
+            best = (best,)
         out.append(g[(g[CFG] == pd.Series(dict(zip(CFG, best)))).all(axis=1)])
     return pd.concat(out)
 sel = select(R)
 rows = []
 for pair, props in (('H2_N2', ('H2', 'H2/N2')), ('O2_N2', ('O2', 'O2/N2')), ('CO2_CH4', ('CO2', 'CO2/CH4'))):
-    s = sel[sel.pair == pair]
+    s = sel[sel.pair == (pair.split('_')[0] if PRED.STEM == 'conn' else pair)]
+    assert len(s) == 3, (pair, len(s))
     for p in props:
         mae, r2 = s[f'{p}|mae'].values, s[f'{p}|r^2'].values
         rows.append([f'{mae.mean():.2f} ± {mae.std():.2f}', f'{r2.mean():.2f} ± {r2.std():.2f}'])
 N['table2'] = rows
 N['selected_configs'] = {pair: dict(sel[sel.pair == pair][CFG].iloc[0].astype(str)) for pair in sel.pair.unique()}
+N['table2_model'] = PRED.STEM
+# the published grid is still read for the ablation sentence about edge weights and directedness, which describes
+# the inherited architecture rather than the model Table 2 now reports
+_PUB = pd.read_csv(os.path.join(O, 'grid_runs.csv'))
+_PCFG = ['ew', 'fw', 'init', 'directed']
+_psel = []
+for _pair, _g in _PUB.groupby('pair'):
+    _m = _g.groupby(_PCFG)['val_loss'].agg(['mean', 'count'])
+    _best = _m[_m['count'] == 3]['mean'].idxmin()
+    _psel.append(_g[(_g[_PCFG] == pd.Series(dict(zip(_PCFG, _best)))).all(axis=1)])
+_psel = pd.concat(_psel)
+N['published_selected_configs'] = {p: dict(_psel[_psel.pair == p][_PCFG].iloc[0].astype(str))
+                                   for p in _psel.pair.unique()}
 
 # ---- design-space statistics
 names = open(os.path.join(D, 'all_groups', 'names.txt')).read().split()
@@ -87,7 +104,7 @@ N['dataset_motifs_mean'] = float(np.mean(data_steps))
 # ---- experiment vs prediction (synthesized polymers)
 import sys; sys.path.insert(0, H)
 from plots import EXP, load_ens
-pred = load_ens(os.path.join(O, 'fig5_ensemble.txt')); walk_of = json.load(open(os.path.join(H, 'inputs', 'experimental_walks.json')))
+pred = load_ens(os.path.join(H, PRED.FIG5)); walk_of = json.load(open(os.path.join(H, 'inputs', 'experimental_walks.json')))
 ratio = lambda prop: [pred[(w, prop)][0] / EXP[p][prop][0] for p, w in walk_of.items()]
 h2 = ratio('H2'); N['h2_ratio_range'] = f'{min(h2):.1f} – {max(h2):.1f}'
 N['co2ch4_within_pct'] = int(math.ceil(100 * max(abs(r - 1) for r in ratio('CO2/CH4'))))
@@ -149,6 +166,15 @@ N['calibration'] = {
     'single_gain': {'c': _one, **_cal_stats(_novel, {g: _one for g in _CPERM})}}
 N['calibration']['cal']['improvement_pct'] = int(round(100 * (1 - N['calibration']['cal']['mean_abs_log10']
                                                              / N['calibration']['raw']['mean_abs_log10'])))
+# how closely the corrected permeabilities match, as a factor a reader can quote: the worst deviation in either
+# direction, over all four polymers and all three gases, and over the three that are not the reference
+def _worst(group):
+    rs = [(pred[(walk_of[n], g)][0] / _c[g]) / EXP[n][g][0] for n in group for g in _CPERM]
+    return float(max(max(r, 1 / r) for r in rs))
+N['calibration']['within_factor_all'] = _worst(list(walk_of))
+N['calibration']['within_factor_novel'] = _worst(_novel)
+N['calibration']['within_text_all'] = f"{N['calibration']['within_factor_all']:.1f}"
+N['calibration']['within_text_novel'] = f"{N['calibration']['within_factor_novel']:.1f}"
 
 # ---- the connection-aware predictor (campaign/conn_gnn.py), which is the model this revision prescribes.
 # Metrics are on the back-transformed raw scale throughout, so every arm and every baseline is on one footing;
@@ -216,7 +242,8 @@ ab = {(r[0].split(' — ')[0], r[1]): (r[2], r[3])                 # the default
 m = lambda k: float(ab[k][0].split(' ±')[0]); q = lambda k: float(ab[k][1].split(' ±')[0])
 u0, d0, u1, d1 = ('undirected', 'no'), ('directed (walk order)', 'no'), ('undirected', 'yes'), ('directed (walk order)', 'yes')
 dir_better = m(d0) <= m(u0) and q(d0) >= q(u0); ew_worse = m(u1) > m(u0) and m(d1) > m(d0)
-assert all(v['directed'] == 'True' and v['ew'] == 'False' for v in N['selected_configs'].values()), N['selected_configs']
+assert all(v['directed'] == 'True' and v['ew'] == 'False'
+           for v in N['published_selected_configs'].values()), N['published_selected_configs']
 N['ablation_text'] = (
     f"{'directed message passing improved' if dir_better else 'directed message passing did not improve'} the test "
     f"metrics (MAE {m(d0):.3f} vs {m(u0):.3f}, R² {q(d0):.2f} vs {q(u0):.2f} without edge weights), "

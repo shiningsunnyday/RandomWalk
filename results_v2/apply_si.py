@@ -7,6 +7,7 @@ from copy import deepcopy
 H = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, H)
 from docx_tools import *
 import gen_set as GEN                       # which generated set Tables S8/S9 list
+import pred_set as PRED                     # which trained predictor the predicted columns come from
 U = sys.argv[1]; DOC = os.path.join(U, 'word', 'document.xml'); O = os.path.join(H, 'outputs')
 t = load(DOC)
 log = []
@@ -28,9 +29,14 @@ def fmt_perm2(m, s):
 
 
 # ---- Tables S2 / S4: predictions for the synthesized polymers
-pred = ens(os.path.join(O, 'fig5_ensemble.txt'))
+pred = ens(os.path.join(H, PRED.FIG5))
 walk_of = json.load(open(os.path.join(H, 'inputs', 'experimental_walks.json')))
-s2 = [[p, fmt_perm2(*pred[(w, 'H2')]), fmt_perm2(*pred[(w, 'O2')]), fmt_perm2(*pred[(w, 'CO2')])] for p, w in walk_of.items()]
+# Predicted permeabilities are reported on our own laboratory's scale: each is divided by the literature-to-lab
+# factor for its gas, identified on PIM-PI-4, the one repeat unit measured in both protocols. Selectivities (Table
+# S4) are ratios taken on one film, so the offset cancels in them and they are left alone.
+_cal = json.load(open(os.path.join(O, 'numbers.json')))['calibration']['factors']
+_cp = lambda w, g: (pred[(w, g)][0] / _cal[g], pred[(w, g)][1] / _cal[g])
+s2 = [[p, fmt_perm2(*_cp(w, 'H2')), fmt_perm2(*_cp(w, 'O2')), fmt_perm2(*_cp(w, 'CO2'))] for p, w in walk_of.items()]
 s4 = [[p] + [f'{pred[(w, k)][0]:.1f} ± {pred[(w, k)][1]:.1f}' for k in ('CO2/CH4', 'O2/N2', 'H2/N2')] for p, w in walk_of.items()]
 fill_table_rows(tables_after(t, 'Table S2'), s2); fill_table_rows(tables_after(t, 'Table S4'), s4)
 log += ['Table S2: ' + json.dumps(s2), 'Table S4: ' + json.dumps(s4)]
@@ -53,7 +59,7 @@ log.append(f'Table S6: {len(walks)} rows; caption: {text(cap6)}')
 # ---- Table S8: generated structures; Table S9: their predicted properties
 gen = [l.rstrip('\n').split(' ') for l in open(os.path.join(O, GEN.CLEAN))]
 fill_table_rows(tables_after(t, 'Table S8'), [[str(i + 1), g[2], g[0]] for i, g in enumerate(gen)])
-s9 = ens(os.path.join(O, GEN.ENS))
+s9 = ens(os.path.join(H, PRED.S9))
 props = ('H2', 'H2/N2', 'O2', 'O2/N2', 'CO2', 'CO2/CH4')
 fill_table_rows(tables_after(t, 'Table S9')[1:], [[str(i + 1)] + [f'{s9[(g[2], p)][0]:.1f}±{s9[(g[2], p)][1]:.1f}' for p in props]
                                                  for i, g in enumerate(gen)])
@@ -171,7 +177,11 @@ if os.path.exists(SIT):
                   '−1: a model fitted in log space can extrapolate above the largest training permeability on a '
                   'single test polymer, and exponentiating that error dominates a mean R² while barely moving '
                   'the MAE, so those rows should be read on MAE. A cell given as ≪0 is an R² below −10, that is, '
-                  'a fit that diverged on that property; its MAE is reported as it stands.'),
+                  'a fit that diverged on that property; its MAE is reported as it stands. These numbers are not '
+                  'comparable with the baseline comparison reported previously for this grammar (53): that '
+                  'comparison predates the correction of several permeability labels in the dataset used here, and '
+                  'its baselines were run at fixed hyperparameters rather than tuned on a validation split as they '
+                  'are above. Both changes favour the baselines, and the ordering differs accordingly.'),
         'raw': ('Table S13: The same baselines as Table S12, restricted to the untransformed permeability and '
                 'selectivity targets that our own model is trained on, so that the comparison isolates the effect of '
                 'the representation from the effect of the target transform. Columns and selection rules are '
@@ -216,14 +226,16 @@ if os.path.exists(SGT):
         'characterised monomers of the dataset itself, scored the same way, and it is included because it '
         'calibrates the other rows. Novelty is measured against that dataset, so it is 0% there by construction. '
         'Retro* is a retrosynthesis success rate computed with the same planner and budget throughout, on a seeded '
-        'subsample where a full pass was too expensive. Note that Retro* tracks molecular size far more strongly '
-        'than it tracks method quality: across the rows with both quantities it correlates with the median '
-        f"heavy-atom count at r = {sv.get('r_text', '')} (n = {sv.get('n', '')}), and the dataset's own monomers "
-        f"score {sv.get('dataset_retro', '')} at a median of {sv.get('dataset_median_ha', '')} heavy atoms against "
-        f"our {sv.get('ours_retro', '')} at {sv.get('ours_median_ha', '')}. Our structures sit at the small end by "
-        'construction, because best-first enumeration expands the most probable walks first and those are the short '
-        'ones, which is the intended search order for systematic exploration of the design space; the size-matched '
-        'comparisons are therefore the informative ones.'))
+        'subsample where a full pass was too expensive. Retro* is a bounded tree search over a fixed template '
+        'library, so a failure is not evidence that a molecule cannot be made: the 114 dataset monomers have all '
+        f"been synthesized and reported, yet the planner solves {sv.get('dataset_retro', '')} of them, at a median "
+        f"of {sv.get('dataset_median_ha', '')} heavy atoms against our {sv.get('ours_retro', '')} at "
+        f"{sv.get('ours_median_ha', '')}. Success accordingly correlates with the median heavy-atom count across "
+        f"the rows with both quantities (r = {sv.get('r_text', '')}, n = {sv.get('n', '')}). The column is "
+        'therefore informative in one direction, as positive evidence of accessibility where the search succeeds. '
+        'Our structures sit at the small end by construction, because best-first enumeration expands the most '
+        'probable walks first and those are short walks built from the motif pairs the grammar has seen most '
+        'often, so they are assembled from few, frequently used blocks.'))
     for r in cap.findall(W + 'r')[1:]: cap.remove(r)
     tbl14 = deepcopy(s9_frag)
     for tr in tbl14.findall(W + 'tr')[2:]: tbl14.remove(tr)
@@ -238,6 +250,40 @@ if os.path.exists(SGT):
     anchor = tbl14
 else:
     log.append('Table S14 SKIPPED: baselines/outputs/si_gen_table.json not found')
+
+# ---- Table S15: the same comparison at ten splits. With about nineteen test polymers per split, a three-split
+# mean is sensitive to which polymers land in the test set; re-running every method at ten splits is the cheapest
+# check that the ordering is not an artefact of that choice.
+K10 = os.path.join(H, 'baselines', 'outputs', 'k10_table.json')
+if os.path.exists(K10) and 'tbl14' in dir():
+    kt = json.load(open(K10))
+    cap = deepcopy(find_par(t, 'Table S9'))
+    set_runs_text(cap, (
+        'Table S15: The comparison of Table S12 repeated with ten train/test splits instead of three, everything '
+        'else identical. Metrics are averaged over the six properties on the normalized raw scale, so a method '
+        'fitted in log space is scored after transforming its predictions back; median and worst are taken over '
+        'the six per-property means. Ten splits leave every method less accurate in R\u00b2 than three did, which '
+        'is what one expects when a three-split mean is drawn from about nineteen test polymers each time, and '
+        f"the ordering by MAE is largely preserved. Ours ranks {kt['ours_rank']} of {kt['n']} by mean absolute "
+        'error here. The split-to-split spread is the dominant uncertainty in this table and in Table 2: the '
+        'worst single property-split fit of our own model has R\u00b2 below zero on the same split that is worst '
+        'for several baselines, while its median across properties is comparable to the most accurate methods.'))
+    for r in cap.findall(W + 'r')[1:]:
+        cap.remove(r)
+    tbl15 = deepcopy(s9_frag)
+    for tr in tbl15.findall(W + 'tr')[2:]:
+        tbl15.remove(tr)
+    spacer = deepcopy(find_par(t, 'Table S9')); [spacer.remove(r) for r in spacer.findall(W + 'r')]
+    anchor.addnext(cap); cap.addnext(tbl15)
+    anchor.addnext(spacer)
+    for tc, v in zip(tbl15.findall(W + 'tr')[0].findall(W + 'tc'), kt['header']):
+        set_cell_text(tc, v)
+    fill_table_rows([tbl15], [r + [''] * (7 - len(r)) for r in kt['rows']])
+    set_col_widths(tbl15, [3400, 1150, 1150, 1150, 1150, 600, 600])
+    anchor = tbl15
+    log.append(f"Table S15 added: {len(kt['rows'])} rows, our rank {kt['ours_rank']}/{kt['n']}")
+else:
+    log.append('Table S15 SKIPPED: k10_table.json not found')
 
 # The i.i.d.-sampling panels that stood here have been removed. Our generator is an enumeration, not a sampler:
 # it returns the grammar's highest-confidence walks in order, which is what makes it systematic and interpretable,

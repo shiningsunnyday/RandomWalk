@@ -1,0 +1,23 @@
+{
+ "H2": {
+  "config": 6,
+  "hid": 128,
+  "layers": 3,
+  "dropout": 0.0,
+  "lr": 0.001
+ },
+ "O2": {
+  "config": 6,
+  "hid": 128,
+  "layers": 3,
+  "dropout": 0.0,
+  "lr": 0.001
+ },
+ "CO2": {
+  "config": 6,
+  "hid": 128,
+  "layers": 3,
+  "dropout": 0.0,
+  "lr": 0.001
+ }
+}

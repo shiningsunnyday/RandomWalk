@@ -40,6 +40,27 @@ def ours():
     return out
 
 
+def ours_conn():
+    """The connection-aware predictor (campaign/conn_predict.py), selected and scored the same way as ours()."""
+    import pandas as pd
+    p = os.path.join(RV, 'campaign', 'outputs', 'conn', 'conn_grid.csv')
+    if not os.path.exists(p):
+        return None
+    R = pd.read_csv(p)
+    out = {}
+    for pair, props in (('H2', ('H2', 'H2/N2')), ('O2', ('O2', 'O2/N2')), ('CO2', ('CO2', 'CO2/CH4'))):
+        g = R[R.pair == pair]
+        m = g.groupby('config')['val_loss'].agg(['mean', 'count'])
+        best = m[m['count'] == 3]['mean'].idxmin()
+        s = g[g.config == best]
+        for q in props:
+            out[q] = {'mae': (s[f'{q}|mae'].mean(), s[f'{q}|mae'].std(ddof=0)),
+                      'r2': (s[f'{q}|r^2'].mean(), s[f'{q}|r^2'].std(ddof=0)),
+                      'mae_seeds': s.sort_values('seed')[f'{q}|mae'].tolist(),
+                      'r2_seeds': s.sort_values('seed')[f'{q}|r^2'].tolist()}
+    return out
+
+
 def load():
     rows = {}
     path = os.path.join(H, 'outputs', 'results.jsonl')
@@ -62,7 +83,8 @@ def fmt(v, nd=2):
 
 
 SI_LABEL = {                                      # table label -> the results.jsonl baseline name
-    'Ours (random-walk grammar)': 'Ours (random-walk grammar GNN)',
+    'Ours (connection-aware)': 'Ours (connection-aware)',
+    'Ours (random-walk grammar, published parameterization)': 'Ours (random-walk grammar GNN)',
     'Morgan FP + GP (Tanimoto)': 'Morgan FP + GP (Tanimoto)',
     'Morgan FP + random forest': 'Morgan FP + random forest',
     'Morgan FP + SVR (RBF)': 'Morgan FP + SVR (RBF)',
@@ -117,7 +139,11 @@ def si_tables(M, mean_mae, med_r2, min_r2):
 def main():
     M = load()
     M['Ours (random-walk grammar GNN)'] = ours()
-    order = ['Ours (random-walk grammar GNN)'] + sorted(k for k in M if not k.startswith('Ours'))
+    _conn = ours_conn()
+    if _conn:
+        M['Ours (connection-aware)'] = _conn
+    order = (['Ours (connection-aware)'] if _conn else []) + ['Ours (random-walk grammar GNN)'] + \
+        sorted(k for k in M if not k.startswith('Ours'))
     # headline: mean over the six properties, which is how the ablation table already summarizes a configuration
     mean_mae = {k: np.mean([M[k][p]['mae'][0] for p in PROPS if p in M[k]]) for k in order}
     mean_r2 = {k: np.mean([M[k][p]['r2'][0] for p in PROPS if p in M[k]]) for k in order}
